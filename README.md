@@ -1,0 +1,2 @@
+# VerifAITrading
+Trading
