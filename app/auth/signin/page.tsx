@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { signInWithEmail, signInWithGoogle } from '../../../lib/database'
+import { signInWithEmail, signInWithGoogle, SUPABASE_CONFIGURED } from '../../../lib/database'
 
 // SVG Icons as components
 const TrendingUp = ({ className, style }: { className?: string, style?: React.CSSProperties }) => (
@@ -101,6 +101,8 @@ export default function SignInPage() {
     }
   }
 
+  const supabaseMissing = !SUPABASE_CONFIGURED
+
   return (
     <div 
       onClick={handlePageClick}
@@ -179,7 +181,22 @@ export default function SignInPage() {
             Debug: {debugInfo}
           </div>
           
-          <form onSubmit={handleSubmit} style={{display: 'flex', flexDirection: 'column', gap: '1.5rem'}}>
+          {supabaseMissing && (
+            <div style={{
+              padding: '0.75rem 1rem',
+              background: 'rgba(220,38,38,0.15)',
+              border: '1px solid rgba(220,38,38,0.4)',
+              borderRadius: '0.75rem',
+              color: '#fecaca',
+              fontSize: '0.85rem',
+              lineHeight: 1.3,
+              marginBottom: '1rem'
+            }}>
+              <strong>Supabase not configured.</strong><br/> Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to <code>.env.local</code>, then restart the dev server.
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} style={{display: 'flex', flexDirection: 'column', gap: '1.5rem', opacity: supabaseMissing ? 0.6 : 1, pointerEvents: supabaseMissing ? 'none' : 'auto'}}>
             {/* Email Field */}
             <div>
               <label htmlFor="email" style={{
