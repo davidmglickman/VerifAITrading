@@ -1,9 +1,40 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+// Load env vars (may be undefined during initial setup)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const SUPABASE_CONFIGURED = Boolean(supabaseUrl && supabaseAnonKey)
+
+// Provide a graceful fallback stub instead of throwing during module load so
+// the app can render and show a helpful UI message.
+const createStub = () => {
+  const errorMsg = 'Supabase not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to .env.local.'
+  const authError = { data: null, error: { message: errorMsg } }
+  return {
+    auth: {
+      signInWithPassword: async () => authError,
+      signUp: async () => authError,
+      signInWithOAuth: async () => authError,
+      signOut: async () => ({ error: { message: errorMsg } }),
+      getUser: async () => ({ data: { user: null }, user: null, error: { message: errorMsg } })
+    },
+    from: () => ({
+      select: () => ({ eq: () => ({ data: [], error: { message: errorMsg } }), order: () => ({ data: [], error: { message: errorMsg } }) }),
+      insert: () => ({ select: () => ({ data: [], error: { message: errorMsg } }) }),
+      delete: () => ({ eq: () => ({ error: { message: errorMsg } }) })
+    })
+  } as any
+}
+
+export const supabase = SUPABASE_CONFIGURED
+  ? createClient(supabaseUrl as string, supabaseAnonKey as string)
+  : createStub()
+
+if (!SUPABASE_CONFIGURED && process.env.NODE_ENV !== 'production') {
+  // eslint-disable-next-line no-console
+  console.warn('[Startup] Supabase env vars missing. Using stub client. Fill them in .env.local to enable data features.')
+}
 
 // Types for our database tables
 export interface User {
