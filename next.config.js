@@ -3,10 +3,9 @@ const nextConfig = {
   images: {
     domains: ['images.unsplash.com', 'via.placeholder.com'],
   },
-  env: {
-    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  },
-}
+  // Removed explicit env mapping. Next.js automatically exposes variables
+  // prefixed with NEXT_PUBLIC_ from your process environment / .env.local.
+  // Define them in a local .env.local (not committed) or in Vercel project settings.
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;
