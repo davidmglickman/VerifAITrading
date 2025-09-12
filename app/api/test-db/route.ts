@@ -1,40 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '../../../lib/database'
+import { supabase } from '../../../lib/supabase'
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('Testing database connection...')
-    
-    // Test basic connection
+    // Test basic database connection
     const { data: connectionTest, error: connectionError } = await supabase
       .from('user_watchlist')
-      .select('*')
-      .limit(1)
-    
+      .select('count', { count: 'exact', head: true })
+
     if (connectionError) {
-      console.error('Database connection error:', connectionError)
       return NextResponse.json({
         success: false,
         error: 'Database connection failed',
         details: connectionError.message,
-        suggestion: 'Check if Supabase tables exist and RLS policies are configured'
+        suggestion: 'Please run the database setup SQL first'
       }, { status: 500 })
     }
-    
-    // Test table structure
-    const { data: tableInfo, error: tableError } = await supabase
-      .rpc('get_table_info', { table_name: 'user_watchlist' })
-      .single()
-    
+
+    // Test table structure by trying to select all expected columns
+    const { data: testData, error: testError } = await supabase
+      .from('user_watchlist')
+      .select('id, user_id, symbol, added_at')
+      .limit(1)
+
+    const { data: alertsTest, error: alertsError } = await supabase
+      .from('alerts')
+      .select('id, user_id, symbol, alert_type, target_price, is_active, created_at')
+      .limit(1)
+
     return NextResponse.json({
       success: true,
-      message: 'Database connection successful',
-      connectionTest: connectionTest || [],
-      tableExists: !tableError,
-      tableError: tableError?.message || null
+      tables: {
+        user_watchlist: {
+          accessible: !testError,
+          error: testError?.message,
+          expectedColumns: ['id', 'user_id', 'symbol', 'added_at'],
+          testPassed: !testError
+        },
+        alerts: {
+          accessible: !alertsError,
+          error: alertsError?.message,
+          expectedColumns: ['id', 'user_id', 'symbol', 'alert_type', 'target_price', 'is_active', 'created_at'],
+          testPassed: !alertsError
+        }
+      },
+      timestamp: new Date().toISOString()
     })
+
   } catch (error) {
-    console.error('Database test error:', error)
     return NextResponse.json({
       success: false,
       error: 'Database test failed',
