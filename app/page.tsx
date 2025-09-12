@@ -1,8 +1,23 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 export default function HomePage() {
+  const router = useRouter()
+
+  // Navigation handlers
+  const handleSignIn = () => {
+    router.push('/auth/signin')
+  }
+
+  const handleGetStarted = () => {
+    router.push('/auth/signin')
+  }
+
+  const handleViewDashboard = () => {
+    router.push('/dashboard')
+  }
   return (
     <div style={{
       minHeight: '100vh', 
@@ -62,15 +77,18 @@ export default function HomePage() {
           </div>
           
           <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
-            <Link 
-              href="/auth/signin"
+            <button 
+              onClick={handleSignIn}
               style={{
                 padding: '0.5rem 1rem',
                 color: '#424245',
-                textDecoration: 'none',
+                backgroundColor: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 fontWeight: '400',
-                borderRadius: '0.5rem'
+                borderRadius: '0.5rem',
+                fontSize: '16px'
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.color = '#1d1d1f'
@@ -82,23 +100,25 @@ export default function HomePage() {
               }}
             >
               Sign In
-            </Link>
-            <Link 
-              href="/auth/signin"
+            </button>
+            <button 
+              onClick={handleGetStarted}
               className="cta-button"
               style={{
                 padding: '0.75rem 1.5rem',
                 background: 'linear-gradient(135deg, #10b981, #3b82f6)',
                 color: 'white',
+                border: 'none',
                 borderRadius: '0.75rem',
-                textDecoration: 'none',
+                cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 boxShadow: '0 8px 25px rgba(16, 185, 129, 0.4)',
-                fontWeight: '600'
+                fontWeight: '600',
+                fontSize: '16px'
               }}
             >
               Get Started
-            </Link>
+            </button>
           </div>
         </div>
       </header>
@@ -292,8 +312,8 @@ export default function HomePage() {
                 alignItems: 'center',
                 marginBottom: '2rem'
               }}>
-                <Link 
-                  href="/auth/signin"
+                <button 
+                  onClick={handleGetStarted}
                   className="cta-button"
                   style={{
                     display: 'inline-flex',
@@ -305,16 +325,17 @@ export default function HomePage() {
                     borderRadius: '0.75rem',
                     background: 'linear-gradient(135deg, #007AFF, #5856D6)',
                     color: 'white',
-                    textDecoration: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
                     transition: 'all 0.3s ease',
                     boxShadow: '0 8px 25px rgba(0, 122, 255, 0.3)',
                     minWidth: '200px'
                   }}
                 >
                   Start Trading with AI
-                </Link>
-                <Link 
-                  href="/dashboard"
+                </button>
+                <button 
+                  onClick={handleViewDashboard}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -327,7 +348,7 @@ export default function HomePage() {
                     color: '#1d1d1f',
                     border: '1px solid rgba(0, 0, 0, 0.1)',
                     backdropFilter: 'blur(4px)',
-                    textDecoration: 'none',
+                    cursor: 'pointer',
                     transition: 'all 0.3s ease',
                     minWidth: '200px'
                   }}
@@ -341,7 +362,7 @@ export default function HomePage() {
                   }}
                 >
                   View Live Dashboard
-                </Link>
+                </button>
               </div>
 
               {/* Status */}
