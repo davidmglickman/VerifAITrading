@@ -99,20 +99,6 @@ export default function DashboardPage() {
     loadUserData()
   }, [router])
 
-  // Function to refresh watchlist
-  const refreshWatchlist = async () => {
-    if (user?.id) {
-      try {
-        const { data: watchlistData, error: watchlistError } = await getUserWatchlist(user.id)
-        if (!watchlistError && watchlistData) {
-          setWatchlist(watchlistData)
-        }
-      } catch (error) {
-        console.error('Error refreshing watchlist:', error)
-      }
-    }
-  }
-
   const handleSignOut = async () => {
     try {
       await signOut()
@@ -459,7 +445,7 @@ export default function DashboardPage() {
               }}></div>
               AI Trading Coach
             </h3>
-            <AITradingCoach userWatchlist={watchlist} />
+            <AITradingCoach />
           </section>
           
           {/* Watchlist Manager */}
@@ -487,9 +473,8 @@ export default function DashboardPage() {
               Watchlist Manager
             </h3>
             <WatchlistManager 
-              userId={user?.id || ''} 
               watchlist={watchlist} 
-              onWatchlistUpdate={refreshWatchlist} 
+              onWatchlistUpdate={(newWatchlist) => setWatchlist(newWatchlist)} 
             />
           </section>
           
@@ -517,7 +502,7 @@ export default function DashboardPage() {
               }}></div>
               Position Sizing Calculator
             </h3>
-            <PositionSizingCalculator accountSize={10000} riskPerTrade={2} />
+            <PositionSizingCalculator />
           </section>
           
           {/* Technical Analysis AI */}
@@ -544,7 +529,7 @@ export default function DashboardPage() {
               }}></div>
               Technical Analysis AI
             </h3>
-            <TechnicalAnalysisAI symbol={searchQuery || 'AAPL'} />
+            <TechnicalAnalysisAI />
           </section>
           
           {/* Swing Pattern Scanner */}
@@ -571,7 +556,7 @@ export default function DashboardPage() {
               }}></div>
               Swing Pattern Scanner
             </h3>
-            <SwingPatternScanner symbol={searchQuery || 'AAPL'} />
+            <SwingPatternScanner />
           </section>
           
           {/* Multi-Timeframe Analysis */}
@@ -598,7 +583,7 @@ export default function DashboardPage() {
               }}></div>
               Multi-Timeframe Analysis
             </h3>
-            <MultiTimeframeAnalysis symbol={searchQuery || 'AAPL'} />
+            <MultiTimeframeAnalysis />
           </section>
         </div>
 
@@ -660,7 +645,8 @@ export default function DashboardPage() {
               Smart Alerts
             </h3>
             <AlertsManager 
-              userId={user?.id || ''} 
+              alerts={alerts} 
+              onAlertsUpdate={(newAlerts) => setAlerts(newAlerts)} 
             />
           </div>
           
@@ -688,7 +674,7 @@ export default function DashboardPage() {
               }}></div>
               Portfolio Risk Analysis
             </h3>
-            <PortfolioRiskAI positions={[]} />
+            <PortfolioRiskAI />
           </div>
         </section>
       </main>
