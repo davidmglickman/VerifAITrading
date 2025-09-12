@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { getCurrentUser, signOut } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import AITradingCoach from '../../components/AITradingCoach'
@@ -17,6 +17,8 @@ export default function DashboardPage() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [activeView, setActiveView] = useState('overview')
+  const aiCoachRef = useRef<any>(null)
+  const watchlistRef = useRef<any>(null)
   const [watchlist, setWatchlist] = useState<any[]>([
     { id: 'default-1', symbol: 'GLXY', added_at: new Date().toISOString() },
     { id: 'default-2', symbol: 'GRGG', added_at: new Date().toISOString() }
@@ -325,13 +327,38 @@ function OverviewContent({ watchlist }: { watchlist: any[] }) {
         </h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <button 
-            onClick={() => {
-              // Trigger AI insights generation
-              const insightsButton = document.querySelector('[data-action="generate-insights"]') as HTMLButtonElement
-              if (insightsButton) {
-                insightsButton.click()
-              } else {
-                alert('AI Insights feature is loading. Please wait a moment and try again.')
+            onClick={async () => {
+              try {
+                // Trigger AI insights generation directly
+                if (watchlist.length === 0) {
+                  alert('Add some stocks to your watchlist first!')
+                  return
+                }
+                
+                // Trigger the actual AI insights API call
+                const symbols = watchlist.map(item => item.symbol)
+                const response = await fetch('/api/ai/insights', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    symbols,
+                    marketData: {},
+                    newsData: {},
+                    companyProfiles: {}
+                  })
+                })
+                
+                if (response.ok) {
+                  const result = await response.json()
+                  alert('✅ AI Insights generated! Check the AI Trading Coach section below.')
+                  // Scroll to AI coach section
+                  document.querySelector('[data-section="ai-coach"]')?.scrollIntoView({ behavior: 'smooth' })
+                } else {
+                  alert('❌ Failed to generate AI insights. Please try again.')
+                }
+              } catch (error) {
+                console.error('Error generating insights:', error)
+                alert('❌ Error generating insights. Please check your connection.')
               }
             }}
             style={{
@@ -349,13 +376,19 @@ function OverviewContent({ watchlist }: { watchlist: any[] }) {
           </button>
           <button 
             onClick={() => {
-              // Show add stock input
+              // Scroll to watchlist section and focus add input
+              const watchlistSection = document.querySelector('[data-section="watchlist"]')
               const addInput = document.querySelector('[data-action="add-stock-input"]') as HTMLInputElement
-              if (addInput) {
-                addInput.focus()
-                addInput.scrollIntoView({ behavior: 'smooth' })
+              
+              if (watchlistSection) {
+                watchlistSection.scrollIntoView({ behavior: 'smooth' })
+                setTimeout(() => {
+                  if (addInput) {
+                    addInput.focus()
+                  }
+                }, 500)
               } else {
-                alert('Watchlist feature is loading. Please wait a moment and try again.')
+                alert('Scroll down to find the watchlist section')
               }
             }}
             style={{
@@ -386,7 +419,7 @@ function WatchlistContent({ watchlist, setWatchlist }: { watchlist: any[], setWa
       padding: '2rem',
       border: '1px solid #E5E5E7',
       boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-    }}>
+    }} data-section="watchlist">
       <WatchlistManager userId="default-user" watchlist={watchlist} onWatchlistUpdate={() => {}} />
     </div>
   )
@@ -401,7 +434,7 @@ function AICoachContent({ watchlist }: { watchlist: any[] }) {
       padding: '2rem',
       border: '1px solid #E5E5E7',
       boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-    }}>
+    }} data-section="ai-coach">
       <AITradingCoach userWatchlist={watchlist} />
     </div>
   )
