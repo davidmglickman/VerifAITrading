@@ -159,7 +159,9 @@ export default function SignUpPage() {
           borderRadius: '1.5rem',
           border: '1px solid rgba(0, 0, 0, 0.1)',
           padding: '2rem',
-          boxShadow: '0 25px 50px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.5)'
+          boxShadow: '0 25px 50px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.5)',
+          boxSizing: 'border-box',
+          width: '100%'
         }}>
           <form onSubmit={handleSubmit} style={{display: 'flex', flexDirection: 'column', gap: '1.5rem'}}>
             {/* Name Field */}
@@ -190,6 +192,7 @@ export default function SignUpPage() {
                   onChange={(e) => setName(e.target.value)}
                   style={{
                     width: '100%',
+                    boxSizing: 'border-box',
                     paddingLeft: '2.75rem',
                     paddingRight: '1rem',
                     paddingTop: '0.75rem',
@@ -199,7 +202,8 @@ export default function SignUpPage() {
                     borderRadius: '0.75rem',
                     color: '#1D1D1F',
                     outline: 'none',
-                    transition: 'all 0.3s ease'
+                    transition: 'all 0.3s ease',
+                    fontSize: '1rem'
                   }}
                   placeholder="Enter your full name"
                   required
@@ -244,7 +248,8 @@ export default function SignUpPage() {
                     borderRadius: '0.75rem',
                     color: '#1D1D1F',
                     outline: 'none',
-                    transition: 'all 0.3s ease'
+                    transition: 'all 0.3s ease',
+                    boxSizing: 'border-box'
                   }}
                   placeholder="Enter your email"
                   required
@@ -289,7 +294,8 @@ export default function SignUpPage() {
                     borderRadius: '0.75rem',
                     color: '#1D1D1F',
                     outline: 'none',
-                    transition: 'all 0.3s ease'
+                    transition: 'all 0.3s ease',
+                    boxSizing: 'border-box'
                   }}
                   placeholder="Create a password"
                   required
@@ -351,7 +357,8 @@ export default function SignUpPage() {
                     borderRadius: '0.75rem',
                     color: '#1D1D1F',
                     outline: 'none',
-                    transition: 'all 0.3s ease'
+                    transition: 'all 0.3s ease',
+                    boxSizing: 'border-box'
                   }}
                   placeholder="Confirm your password"
                   required

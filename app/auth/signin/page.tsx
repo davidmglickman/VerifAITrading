@@ -94,9 +94,15 @@ export default function SignInPage() {
         padding: '1rem',
         background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%, #f8fafc 100%)',
         backgroundSize: '400% 400%',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+        boxSizing: 'border-box'
     }}>
-      <div style={{maxWidth: '28rem', width: '100%'}}>
+      <div style={{
+        maxWidth: '28rem', 
+        width: '100%',
+        boxSizing: 'border-box',
+        margin: '0 auto'
+      }}>
         {/* Header */}
         <div style={{textAlign: 'center', marginBottom: '2rem'}}>
           <Link href="/" style={{
@@ -147,7 +153,9 @@ export default function SignInPage() {
           borderRadius: '1.5rem',
           border: '1px solid rgba(0, 0, 0, 0.06)',
           padding: '2rem',
-          boxShadow: '0 25px 50px rgba(0, 0, 0, 0.08), 0 0 60px rgba(59, 130, 246, 0.05)'
+          boxShadow: '0 25px 50px rgba(0, 0, 0, 0.08), 0 0 60px rgba(59, 130, 246, 0.05)',
+          boxSizing: 'border-box',
+          width: '100%'
         }}>
           
           {supabaseMissing && (
@@ -194,6 +202,7 @@ export default function SignInPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   style={{
                     width: '100%',
+                    boxSizing: 'border-box',
                     paddingLeft: '2.75rem',
                     paddingRight: '1rem',
                     paddingTop: '0.75rem',
@@ -204,7 +213,8 @@ export default function SignInPage() {
                     color: '#1d1d1f',
                     outline: 'none',
                     transition: 'all 0.3s ease',
-                    fontWeight: '400'
+                    fontWeight: '400',
+                    fontSize: '1rem'
                   }}
                   placeholder="Enter your email"
                   required
@@ -240,6 +250,7 @@ export default function SignInPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   style={{
                     width: '100%',
+                    boxSizing: 'border-box',
                     paddingLeft: '2.75rem',
                     paddingRight: '3rem',
                     paddingTop: '0.75rem',
@@ -250,7 +261,8 @@ export default function SignInPage() {
                     color: '#1d1d1f',
                     outline: 'none',
                     transition: 'all 0.3s ease',
-                    fontWeight: '400'
+                    fontWeight: '400',
+                    fontSize: '1rem'
                   }}
                   placeholder="Enter your password"
                   required
@@ -297,6 +309,7 @@ export default function SignInPage() {
               disabled={isLoading}
               style={{
                 width: '100%',
+                boxSizing: 'border-box',
                 padding: '0.75rem',
                 background: 'linear-gradient(135deg, #007AFF, #5856D6)',
                 color: 'white',
@@ -306,7 +319,8 @@ export default function SignInPage() {
                 cursor: isLoading ? 'not-allowed' : 'pointer',
                 transition: 'all 0.3s ease',
                 boxShadow: '0 8px 25px rgba(0, 122, 255, 0.3)',
-                opacity: isLoading ? 0.5 : 1
+                opacity: isLoading ? 0.5 : 1,
+                fontSize: '1rem'
               }}
             >
               {isLoading ? 'Signing In...' : 'Sign In'}
@@ -342,6 +356,7 @@ export default function SignInPage() {
             disabled={isLoading}
             style={{
               width: '100%',
+              boxSizing: 'border-box',
               padding: '0.75rem',
               backgroundColor: '#FFFFFF',
               border: '1px solid rgba(0, 0, 0, 0.2)',
@@ -355,7 +370,8 @@ export default function SignInPage() {
               justifyContent: 'center',
               gap: '0.75rem',
               opacity: isLoading ? 0.5 : 1,
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+              fontSize: '1rem'
             }}
           >
             <svg style={{width: '1.25rem', height: '1.25rem'}} viewBox="0 0 24 24">
