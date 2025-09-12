@@ -44,14 +44,6 @@ export default function SignInPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [debugInfo, setDebugInfo] = useState('Page loaded - waiting for interaction')
-
-  // Debug function for page clicks
-  const handlePageClick = (e: React.MouseEvent) => {
-    const target = e.target as Element
-    setDebugInfo(`Click detected! Target: ${target.tagName} at (${e.clientX}, ${e.clientY})`)
-    console.log('Page click:', target)
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -61,15 +53,12 @@ export default function SignInPage() {
       const { data, error } = await signInWithEmail(email, password)
       
       if (error) {
-        console.error('Sign in error:', error.message)
         alert('Sign in failed: ' + error.message)
       } else {
-        console.log('Sign in successful:', data)
         // Redirect to dashboard on success
         window.location.href = '/dashboard'
       }
     } catch (error) {
-      console.error('Unexpected error:', error)
       alert('An unexpected error occurred')
     } finally {
       setIsLoading(false)
@@ -77,26 +66,18 @@ export default function SignInPage() {
   }
 
   const handleGoogleSignIn = async () => {
-    console.log('Google sign-in initiated')
-    setDebugInfo('Google OAuth starting...')
     setIsLoading(true)
     
     try {
-      console.log('Attempting Google OAuth...')
       const { data, error } = await signInWithGoogle()
       
       if (error) {
-        console.error('Google sign in error:', error)
-        setDebugInfo(`Google sign-in failed: ${error.message}`)
+        alert('Google sign in failed: ' + (error as any)?.message || 'Unknown error')
         setIsLoading(false)
-      } else {
-        console.log('Google OAuth redirect initiated')
-        setDebugInfo('Redirecting to Google...')
-        // Note: For OAuth, the redirect happens automatically
       }
+      // Note: For OAuth, the redirect happens automatically on success
     } catch (error) {
-      console.error('Unexpected Google sign in error:', error)
-      setDebugInfo(`Unexpected error: ${(error as any)?.message || 'Unknown error'}`)
+      alert('An unexpected error occurred during Google sign in')
       setIsLoading(false)
     }
   }
@@ -105,15 +86,15 @@ export default function SignInPage() {
 
   return (
     <div 
-      onClick={handlePageClick}
       style={{
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         padding: '1rem',
-      background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 25%, #1e40af 50%, #1e293b 75%, #0f172a 100%)',
-      backgroundSize: '400% 400%'
+        background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%, #f8fafc 100%)',
+        backgroundSize: '400% 400%',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
     }}>
       <div style={{maxWidth: '28rem', width: '100%'}}>
         {/* Header */}
@@ -128,19 +109,19 @@ export default function SignInPage() {
             <div style={{
               width: '3rem',
               height: '3rem',
-              background: 'linear-gradient(135deg, #10b981, #3b82f6)',
+              background: 'linear-gradient(135deg, #007AFF, #5856D6)',
               borderRadius: '0.75rem',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 8px 25px rgba(16, 185, 129, 0.4)'
+              boxShadow: '0 8px 25px rgba(0, 122, 255, 0.3)'
             }}>
               <TrendingUp style={{width: '1.75rem', height: '1.75rem', color: 'white'}} />
             </div>
             <span style={{
               fontSize: '1.5rem',
-              fontWeight: 'bold',
-              color: '#f8fafc'
+              fontWeight: '600',
+              color: '#1d1d1f'
             }}>
               VerifAI Trading
             </span>
@@ -148,13 +129,13 @@ export default function SignInPage() {
           
           <h1 style={{
             fontSize: '2rem',
-            fontWeight: 'bold',
-            color: '#f8fafc',
+            fontWeight: '700',
+            color: '#1d1d1f',
             marginBottom: '0.5rem'
           }}>
             Welcome Back
           </h1>
-          <p style={{color: 'rgba(255, 255, 255, 0.6)'}}>
+          <p style={{color: '#6e6e73', fontWeight: '400'}}>
             Sign in to your account to continue
           </p>
         </div>
@@ -162,32 +143,20 @@ export default function SignInPage() {
         {/* Sign In Form */}
         <div style={{
           backdropFilter: 'blur(20px)',
-          backgroundColor: 'rgba(15, 23, 42, 0.6)',
+          backgroundColor: 'rgba(255, 255, 255, 0.8)',
           borderRadius: '1.5rem',
-          border: '1px solid rgba(59, 130, 246, 0.3)',
+          border: '1px solid rgba(0, 0, 0, 0.06)',
           padding: '2rem',
-          boxShadow: '0 25px 50px rgba(0, 0, 0, 0.4), 0 0 60px rgba(59, 130, 246, 0.1)'
+          boxShadow: '0 25px 50px rgba(0, 0, 0, 0.08), 0 0 60px rgba(59, 130, 246, 0.05)'
         }}>
-          {/* Debug Info */}
-          <div style={{
-            padding: '0.5rem',
-            backgroundColor: 'rgba(255, 255, 0, 0.1)',
-            border: '1px solid rgba(255, 255, 0, 0.3)',
-            borderRadius: '0.5rem',
-            marginBottom: '1rem',
-            fontSize: '0.8rem',
-            color: '#ffff00'
-          }}>
-            Debug: {debugInfo}
-          </div>
           
           {supabaseMissing && (
             <div style={{
               padding: '0.75rem 1rem',
-              background: 'rgba(220,38,38,0.15)',
-              border: '1px solid rgba(220,38,38,0.4)',
+              background: 'rgba(220,38,38,0.1)',
+              border: '1px solid rgba(220,38,38,0.3)',
               borderRadius: '0.75rem',
-              color: '#fecaca',
+              color: '#dc2626',
               fontSize: '0.85rem',
               lineHeight: 1.3,
               marginBottom: '1rem'
@@ -202,8 +171,8 @@ export default function SignInPage() {
               <label htmlFor="email" style={{
                 display: 'block',
                 fontSize: '0.875rem',
-                fontWeight: '500',
-                color: 'rgba(255, 255, 255, 0.8)',
+                fontWeight: '600',
+                color: '#1d1d1f',
                 marginBottom: '0.5rem'
               }}>
                 Email Address
@@ -216,7 +185,7 @@ export default function SignInPage() {
                   transform: 'translateY(-50%)',
                   width: '1.25rem',
                   height: '1.25rem',
-                  color: 'rgba(255, 255, 255, 0.4)'
+                  color: '#86868b'
                 }} />
                 <input
                   id="email"
@@ -229,12 +198,13 @@ export default function SignInPage() {
                     paddingRight: '1rem',
                     paddingTop: '0.75rem',
                     paddingBottom: '0.75rem',
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                    border: '1px solid rgba(0, 0, 0, 0.1)',
                     borderRadius: '0.75rem',
-                    color: 'white',
+                    color: '#1d1d1f',
                     outline: 'none',
-                    transition: 'all 0.3s ease'
+                    transition: 'all 0.3s ease',
+                    fontWeight: '400'
                   }}
                   placeholder="Enter your email"
                   required
@@ -247,8 +217,8 @@ export default function SignInPage() {
               <label htmlFor="password" style={{
                 display: 'block',
                 fontSize: '0.875rem',
-                fontWeight: '500',
-                color: 'rgba(255, 255, 255, 0.8)',
+                fontWeight: '600',
+                color: '#1d1d1f',
                 marginBottom: '0.5rem'
               }}>
                 Password
@@ -261,7 +231,7 @@ export default function SignInPage() {
                   transform: 'translateY(-50%)',
                   width: '1.25rem',
                   height: '1.25rem',
-                  color: 'rgba(255, 255, 255, 0.4)'
+                  color: '#86868b'
                 }} />
                 <input
                   id="password"
@@ -274,12 +244,13 @@ export default function SignInPage() {
                     paddingRight: '3rem',
                     paddingTop: '0.75rem',
                     paddingBottom: '0.75rem',
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                    border: '1px solid rgba(0, 0, 0, 0.1)',
                     borderRadius: '0.75rem',
-                    color: 'white',
+                    color: '#1d1d1f',
                     outline: 'none',
-                    transition: 'all 0.3s ease'
+                    transition: 'all 0.3s ease',
+                    fontWeight: '400'
                   }}
                   placeholder="Enter your password"
                   required
@@ -292,7 +263,7 @@ export default function SignInPage() {
                     right: '0.75rem',
                     top: '50%',
                     transform: 'translateY(-50%)',
-                    color: 'rgba(255, 255, 255, 0.4)',
+                    color: '#86868b',
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
@@ -310,9 +281,10 @@ export default function SignInPage() {
                 href="/auth/forgot-password"
                 style={{
                   fontSize: '0.875rem',
-                  color: '#60a5fa',
+                  color: '#007AFF',
                   textDecoration: 'none',
-                  transition: 'color 0.3s ease'
+                  transition: 'color 0.3s ease',
+                  fontWeight: '400'
                 }}
               >
                 Forgot your password?
@@ -326,14 +298,14 @@ export default function SignInPage() {
               style={{
                 width: '100%',
                 padding: '0.75rem',
-                background: 'linear-gradient(135deg, #10b981, #3b82f6)',
+                background: 'linear-gradient(135deg, #007AFF, #5856D6)',
                 color: 'white',
                 fontWeight: '600',
                 borderRadius: '0.75rem',
                 border: 'none',
                 cursor: isLoading ? 'not-allowed' : 'pointer',
                 transition: 'all 0.3s ease',
-                boxShadow: '0 8px 25px rgba(16, 185, 129, 0.4)',
+                boxShadow: '0 8px 25px rgba(0, 122, 255, 0.3)',
                 opacity: isLoading ? 0.5 : 1
               }}
             >
@@ -349,18 +321,18 @@ export default function SignInPage() {
           }}>
             <div style={{
               flex: 1,
-              borderTop: '1px solid rgba(255, 255, 255, 0.1)'
+              borderTop: '1px solid rgba(0, 0, 0, 0.1)'
             }}></div>
             <span style={{
               padding: '0 1rem',
-              color: 'rgba(255, 255, 255, 0.4)',
+              color: '#86868B',
               fontSize: '0.875rem'
             }}>
               or
             </span>
             <div style={{
               flex: 1,
-              borderTop: '1px solid rgba(255, 255, 255, 0.1)'
+              borderTop: '1px solid rgba(0, 0, 0, 0.1)'
             }}></div>
           </div>
 
@@ -371,9 +343,9 @@ export default function SignInPage() {
             style={{
               width: '100%',
               padding: '0.75rem',
-              backgroundColor: isLoading ? 'rgba(255, 255, 255, 0.02)' : 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              color: isLoading ? 'rgba(255, 255, 255, 0.5)' : 'white',
+              backgroundColor: '#FFFFFF',
+              border: '1px solid rgba(0, 0, 0, 0.2)',
+              color: '#1D1D1F',
               fontWeight: '500',
               borderRadius: '0.75rem',
               cursor: isLoading ? 'not-allowed' : 'pointer',
@@ -382,14 +354,15 @@ export default function SignInPage() {
               alignItems: 'center',
               justifyContent: 'center',
               gap: '0.75rem',
-              opacity: isLoading ? 0.6 : 1
+              opacity: isLoading ? 0.5 : 1,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
             }}
           >
             <svg style={{width: '1.25rem', height: '1.25rem'}} viewBox="0 0 24 24">
-              <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-              <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
             </svg>
             <span>Continue with Google</span>
           </button>
@@ -399,12 +372,12 @@ export default function SignInPage() {
             marginTop: '1.5rem',
             textAlign: 'center'
           }}>
-            <p style={{color: 'rgba(255, 255, 255, 0.6)'}}>
+            <p style={{color: '#86868B'}}>
               Don't have an account?{' '}
               <Link 
                 href="/auth/signup"
                 style={{
-                  color: '#60a5fa',
+                  color: '#007AFF',
                   fontWeight: '500',
                   textDecoration: 'none',
                   transition: 'color 0.3s ease'

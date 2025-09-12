@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { getCurrentUser, getUserWatchlist, getUserAlerts, signOut } from '../../lib/database'
+import { getCurrentUser, getUserWatchlist, getUserAlerts, signOut } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import AITradingCoach from '../../components/AITradingCoach'
 import WatchlistManager from '../../components/WatchlistManager'
@@ -10,7 +10,12 @@ import TechnicalAnalysisAI from '../../components/TechnicalAnalysisAI'
 import OCORecommendationAI from '../../components/OCORecommendationAI'
 import SentimentAnalysisAI from '../../components/SentimentAnalysisAI'
 import PortfolioRiskAI from '../../components/PortfolioRiskAI'
+import ProfitTakingAI from '../../components/ProfitTakingAI'
 import HoverButton from '../../components/HoverButton'
+import PositionSizingCalculator from '../../components/PositionSizingCalculator'
+import SwingPatternScanner from '../../components/SwingPatternScanner'
+import MultiTimeframeAnalysis from '../../components/MultiTimeframeAnalysis'
+import ExitStrategyManager from '../../components/ExitStrategyManager'
 
 // SVG Icons as components
 const TrendingUp = ({ className, style }: { className?: string, style?: React.CSSProperties }) => (
@@ -123,11 +128,12 @@ export default function DashboardPage() {
     return (
       <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 25%, #1e40af 50%, #1e293b 75%, #0f172a 100%)',
+        background: 'linear-gradient(135deg, #F8F9FA 0%, #FFFFFF 50%, #F1F3F4 100%)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        color: 'white'
+        color: '#1D1D1F',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
       }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Loading...</div>
@@ -140,19 +146,19 @@ export default function DashboardPage() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 25%, #1e40af 50%, #1e293b 75%, #0f172a 100%)',
-      backgroundSize: '400% 400%'
+      background: 'linear-gradient(135deg, #F8F9FA 0%, #FFFFFF 50%, #F1F3F4 100%)',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
     }}>
       {/* Header */}
       <header style={{
         backdropFilter: 'blur(20px)',
-        backgroundColor: 'rgba(15, 23, 42, 0.8)',
-        borderBottom: '1px solid rgba(59, 130, 246, 0.3)',
+        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+        borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
         padding: '1rem 1.5rem',
         position: 'sticky',
         top: 0,
         zIndex: 50,
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)'
       }}>
         <div style={{
           maxWidth: '80rem',
@@ -165,16 +171,16 @@ export default function DashboardPage() {
             <div style={{
               width: '2.5rem',
               height: '2.5rem',
-              background: 'linear-gradient(135deg, #10b981, #3b82f6)',
+              background: 'linear-gradient(135deg, #007AFF, #5856D6)',
               borderRadius: '0.75rem',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 8px 25px rgba(16, 185, 129, 0.4)'
+              boxShadow: '0 8px 25px rgba(0, 122, 255, 0.3)'
             }}>
               <TrendingUp style={{width: '1.5rem', height: '1.5rem', color: 'white'}} />
             </div>
-            <h1 style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#f8fafc'}}>VerifAI Trading</h1>
+            <h1 style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#1D1D1F'}}>VerifAI Trading</h1>
           </div>
           
           <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
@@ -187,7 +193,7 @@ export default function DashboardPage() {
                 transform: 'translateY(-50%)',
                 width: '1.25rem',
                 height: '1.25rem',
-                color: 'rgba(255, 255, 255, 0.4)'
+                color: '#86868B'
               }} />
               <input
                 type="text"
@@ -199,10 +205,10 @@ export default function DashboardPage() {
                   paddingRight: '1rem',
                   paddingTop: '0.5rem',
                   paddingBottom: '0.5rem',
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  backgroundColor: 'rgba(0, 0, 0, 0.03)',
+                  border: '1px solid rgba(0, 0, 0, 0.1)',
                   borderRadius: '0.5rem',
-                  color: 'white',
+                  color: '#1D1D1F',
                   width: '16rem',
                   outline: 'none'
                 }}
@@ -213,13 +219,13 @@ export default function DashboardPage() {
             <button style={{
               position: 'relative',
               padding: '0.5rem',
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              backgroundColor: 'rgba(0, 0, 0, 0.03)',
               borderRadius: '0.5rem',
-              border: 'none',
+              border: '1px solid rgba(0, 0, 0, 0.1)',
               cursor: 'pointer',
               transition: 'background-color 0.3s ease'
             }}>
-              <Bell style={{width: '1.25rem', height: '1.25rem', color: 'white'}} />
+              <Bell style={{width: '1.25rem', height: '1.25rem', color: '#1D1D1F'}} />
               {alerts.length > 0 && (
                 <span style={{
                   position: 'absolute',
@@ -243,13 +249,13 @@ export default function DashboardPage() {
             {/* Settings */}
             <button style={{
               padding: '0.5rem',
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              backgroundColor: 'rgba(0, 0, 0, 0.03)',
               borderRadius: '0.5rem',
-              border: 'none',
+              border: '1px solid rgba(0, 0, 0, 0.1)',
               cursor: 'pointer',
               transition: 'background-color 0.3s ease'
             }}>
-              <Settings style={{width: '1.25rem', height: '1.25rem', color: 'white'}} />
+              <Settings style={{width: '1.25rem', height: '1.25rem', color: '#1D1D1F'}} />
             </button>
             
             {/* Logout */}
@@ -257,16 +263,16 @@ export default function DashboardPage() {
               onClick={handleSignOut}
               style={{
                 padding: '0.5rem',
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                backgroundColor: 'rgba(0, 0, 0, 0.03)',
                 borderRadius: '0.5rem',
-                border: 'none',
+                border: '1px solid rgba(0, 0, 0, 0.1)',
                 cursor: 'pointer',
                 transition: 'background-color 0.3s ease'
               }}
-              onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'}
-              onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'}
+              onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.1)'}
+              onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.03)'}
             >
-              <LogOut style={{width: '1.25rem', height: '1.25rem', color: 'white'}} />
+              <LogOut style={{width: '1.25rem', height: '1.25rem', color: '#1D1D1F'}} />
             </button>
           </div>
         </div>
@@ -286,21 +292,21 @@ export default function DashboardPage() {
           {/* Welcome Section */}
           <div style={{
             backdropFilter: 'blur(20px)',
-            backgroundColor: 'rgba(15, 23, 42, 0.6)',
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
             borderRadius: '1rem',
-            border: '1px solid rgba(59, 130, 246, 0.3)',
+            border: '1px solid rgba(0, 0, 0, 0.1)',
             padding: '1.5rem',
-            boxShadow: '0 25px 50px rgba(0, 0, 0, 0.4), 0 0 60px rgba(59, 130, 246, 0.1)'
+            boxShadow: '0 25px 50px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.5)'
           }}>
             <h2 style={{
               fontSize: '2rem',
               fontWeight: 'bold',
-              color: '#f8fafc',
+              color: '#1D1D1F',
               marginBottom: '0.5rem'
             }}>
               Welcome back! 👋
             </h2>
-            <p style={{color: 'rgba(255, 255, 255, 0.6)'}}>
+            <p style={{color: '#86868B'}}>
               Here's what's happening with your portfolio today.
             </p>
           </div>
@@ -314,11 +320,11 @@ export default function DashboardPage() {
             {/* Watchlist */}
             <div style={{
               backdropFilter: 'blur(20px)',
-              backgroundColor: 'rgba(15, 23, 42, 0.6)',
+              backgroundColor: 'rgba(255, 255, 255, 0.8)',
               borderRadius: '1rem',
-              border: '1px solid rgba(59, 130, 246, 0.3)',
+              border: '1px solid rgba(0, 0, 0, 0.1)',
               padding: '1.5rem',
-              boxShadow: '0 25px 50px rgba(0, 0, 0, 0.4), 0 0 60px rgba(59, 130, 246, 0.1)'
+              boxShadow: '0 25px 50px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.5)'
             }}>
               <div style={{
                 display: 'flex',
@@ -329,7 +335,7 @@ export default function DashboardPage() {
                 <h3 style={{
                   fontSize: '1.5rem',
                   fontWeight: '600',
-                  color: '#f8fafc'
+                  color: '#1D1D1F'
                 }}>
                   Your Watchlist
                 </h3>
@@ -338,13 +344,13 @@ export default function DashboardPage() {
                   alignItems: 'center',
                   gap: '0.5rem',
                   padding: '0.75rem 1rem',
-                  background: 'linear-gradient(135deg, #10b981, #3b82f6)',
+                  background: 'linear-gradient(135deg, #007AFF, #5856D6)',
                   color: 'white',
                   borderRadius: '0.5rem',
                   border: 'none',
                   cursor: 'pointer',
                   transition: 'all 0.3s ease',
-                  boxShadow: '0 8px 25px rgba(16, 185, 129, 0.4)'
+                  boxShadow: '0 8px 25px rgba(0, 122, 255, 0.3)'
                 }}>
                   <Plus style={{width: '1rem', height: '1rem'}} />
                   <span>Add Stock</span>
@@ -354,10 +360,10 @@ export default function DashboardPage() {
               <div style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
                 {watchlist.map((stock) => (
                   <div key={stock.symbol} style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    backgroundColor: 'rgba(0, 0, 0, 0.03)',
                     padding: '1rem',
                     borderRadius: '0.75rem',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    border: '1px solid rgba(0, 0, 0, 0.1)',
                     transition: 'background-color 0.3s ease'
                   }}>
                     <div style={{
@@ -374,11 +380,11 @@ export default function DashboardPage() {
                           <h4 style={{
                             fontSize: '1.125rem',
                             fontWeight: '600',
-                            color: '#f8fafc'
+                            color: '#1D1D1F'
                           }}>
                             {stock.symbol}
                           </h4>
-                          <span style={{color: 'rgba(255, 255, 255, 0.6)'}}>
+                          <span style={{color: '#86868B'}}>
                             {stock.name}
                           </span>
                         </div>
@@ -387,7 +393,7 @@ export default function DashboardPage() {
                         <div style={{
                           fontSize: '1.25rem',
                           fontWeight: 'bold',
-                          color: '#f8fafc'
+                          color: '#1D1D1F'
                         }}>
                           ${stock.price.toFixed(2)}
                         </div>
@@ -407,16 +413,16 @@ export default function DashboardPage() {
             {/* Recent Alerts */}
             <div style={{
               backdropFilter: 'blur(20px)',
-              backgroundColor: 'rgba(15, 23, 42, 0.6)',
+              backgroundColor: 'rgba(255, 255, 255, 0.8)',
               borderRadius: '1rem',
-              border: '1px solid rgba(59, 130, 246, 0.3)',
+              border: '1px solid rgba(0, 0, 0, 0.1)',
               padding: '1.5rem',
-              boxShadow: '0 25px 50px rgba(0, 0, 0, 0.4), 0 0 60px rgba(59, 130, 246, 0.1)'
+              boxShadow: '0 25px 50px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.5)'
             }}>
               <h3 style={{
                 fontSize: '1.5rem',
                 fontWeight: '600',
-                color: '#f8fafc',
+                color: '#1D1D1F',
                 marginBottom: '1rem'
               }}>
                 Recent Alerts 🔔
@@ -424,10 +430,10 @@ export default function DashboardPage() {
               <div style={{display: 'flex', flexDirection: 'column', gap: '0.75rem'}}>
                 {alerts.map((alert) => (
                   <div key={alert.id} style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    backgroundColor: 'rgba(0, 0, 0, 0.03)',
                     padding: '0.75rem',
                     borderRadius: '0.5rem',
-                    border: '1px solid rgba(255, 255, 255, 0.1)'
+                    border: '1px solid rgba(0, 0, 0, 0.1)'
                   }}>
                     <div style={{
                       display: 'flex',
@@ -437,20 +443,20 @@ export default function DashboardPage() {
                       <div>
                         <div style={{
                           fontWeight: '600',
-                          color: '#f8fafc',
+                          color: '#1D1D1F',
                           fontSize: '0.875rem'
                         }}>
                           {alert.symbol}
                         </div>
                         <div style={{
-                          color: 'rgba(255, 255, 255, 0.7)',
+                          color: '#86868B',
                           fontSize: '0.875rem'
                         }}>
                           {alert.message}
                         </div>
                       </div>
                       <div style={{
-                        color: 'rgba(255, 255, 255, 0.4)',
+                        color: '#86868B',
                         fontSize: '0.75rem'
                       }}>
                         {alert.time}
@@ -462,7 +468,7 @@ export default function DashboardPage() {
               <button style={{
                 width: '100%',
                 marginTop: '1rem',
-                color: '#60a5fa',
+                color: '#007AFF',
                 fontSize: '0.875rem',
                 transition: 'color 0.3s ease',
                 background: 'none',
@@ -476,58 +482,58 @@ export default function DashboardPage() {
             {/* AI Insights */}
             <div style={{
               backdropFilter: 'blur(20px)',
-              backgroundColor: 'rgba(15, 23, 42, 0.6)',
+              backgroundColor: 'rgba(255, 255, 255, 0.8)',
               borderRadius: '1rem',
-              border: '1px solid rgba(59, 130, 246, 0.3)',
+              border: '1px solid rgba(0, 0, 0, 0.1)',
               padding: '1.5rem',
-              boxShadow: '0 25px 50px rgba(0, 0, 0, 0.4), 0 0 60px rgba(59, 130, 246, 0.1)'
+              boxShadow: '0 25px 50px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.5)'
             }}>
               <h3 style={{
                 fontSize: '1.5rem',
                 fontWeight: '600',
-                color: '#f8fafc',
+                color: '#1D1D1F',
                 marginBottom: '1rem'
               }}>
                 AI Insights 🤖
               </h3>
               <div style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
                 <div style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  backgroundColor: 'rgba(0, 0, 0, 0.03)',
                   padding: '1rem',
                   borderRadius: '0.5rem',
-                  border: '1px solid rgba(255, 255, 255, 0.1)'
+                  border: '1px solid rgba(0, 0, 0, 0.1)'
                 }}>
                   <h4 style={{
                     fontWeight: '600',
-                    color: '#f8fafc',
+                    color: '#1D1D1F',
                     fontSize: '0.875rem',
                     marginBottom: '0.5rem'
                   }}>
                     📈 Market Outlook
                   </h4>
                   <p style={{
-                    color: 'rgba(255, 255, 255, 0.7)',
+                    color: '#86868B',
                     fontSize: '0.875rem'
                   }}>
                     Strong bullish momentum detected across tech sector. Consider increasing exposure to growth stocks.
                   </p>
                 </div>
                 <div style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  backgroundColor: 'rgba(0, 0, 0, 0.03)',
                   padding: '1rem',
                   borderRadius: '0.5rem',
-                  border: '1px solid rgba(255, 255, 255, 0.1)'
+                  border: '1px solid rgba(0, 0, 0, 0.1)'
                 }}>
                   <h4 style={{
                     fontWeight: '600',
-                    color: '#f8fafc',
+                    color: '#1D1D1F',
                     fontSize: '0.875rem',
                     marginBottom: '0.5rem'
                   }}>
                     ⚠️ Risk Assessment
                   </h4>
                   <p style={{
-                    color: 'rgba(255, 255, 255, 0.7)',
+                    color: '#86868B',
                     fontSize: '0.875rem'
                   }}>
                     Current portfolio shows moderate risk levels. Diversification recommended for volatility protection.
@@ -537,7 +543,7 @@ export default function DashboardPage() {
               <button style={{
                 width: '100%',
                 marginTop: '1rem',
-                color: '#60a5fa',
+                color: '#007AFF',
                 fontSize: '0.875rem',
                 transition: 'color 0.3s ease',
                 background: 'none',
@@ -551,32 +557,32 @@ export default function DashboardPage() {
             {/* TradingView Chart */}
             <div style={{
               backdropFilter: 'blur(20px)',
-              backgroundColor: 'rgba(15, 23, 42, 0.6)',
+              backgroundColor: 'rgba(255, 255, 255, 0.8)',
               borderRadius: '1rem',
-              border: '1px solid rgba(59, 130, 246, 0.3)',
+              border: '1px solid rgba(0, 0, 0, 0.1)',
               padding: '1.5rem',
-              boxShadow: '0 25px 50px rgba(0, 0, 0, 0.4), 0 0 60px rgba(59, 130, 246, 0.1)'
+              boxShadow: '0 25px 50px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.5)'
             }}>
               <h3 style={{
                 fontSize: '1.5rem',
                 fontWeight: '600',
-                color: '#f8fafc',
+                color: '#1D1D1F',
                 marginBottom: '1rem'
               }}>
                 Market Chart 📊
               </h3>
               <div style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                backgroundColor: 'rgba(0, 0, 0, 0.03)',
                 borderRadius: '0.5rem',
                 padding: '2rem',
                 textAlign: 'center',
-                border: '1px solid rgba(255, 255, 255, 0.1)'
+                border: '1px solid rgba(0, 0, 0, 0.1)'
               }}>
-                <p style={{color: 'rgba(255, 255, 255, 0.6)'}}>
+                <p style={{color: '#86868B'}}>
                   TradingView Chart will be integrated here
                 </p>
                 <p style={{
-                  color: 'rgba(255, 255, 255, 0.4)',
+                  color: '#86868B',
                   fontSize: '0.875rem',
                   marginTop: '0.5rem'
                 }}>
@@ -588,16 +594,16 @@ export default function DashboardPage() {
             {/* Quick Actions */}
             <div style={{
               backdropFilter: 'blur(20px)',
-              backgroundColor: 'rgba(15, 23, 42, 0.6)',
+              backgroundColor: 'rgba(255, 255, 255, 0.8)',
               borderRadius: '1rem',
-              border: '1px solid rgba(59, 130, 246, 0.3)',
+              border: '1px solid rgba(0, 0, 0, 0.1)',
               padding: '1.5rem',
-              boxShadow: '0 25px 50px rgba(0, 0, 0, 0.4), 0 0 60px rgba(59, 130, 246, 0.1)'
+              boxShadow: '0 25px 50px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.5)'
             }}>
               <h3 style={{
                 fontSize: '1.5rem',
                 fontWeight: '600',
-                color: '#f8fafc',
+                color: '#1D1D1F',
                 marginBottom: '1rem'
               }}>
                 Quick Actions ⚡
@@ -606,12 +612,12 @@ export default function DashboardPage() {
                 <button style={{
                   width: '100%',
                   padding: '0.75rem',
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  backgroundColor: 'rgba(0, 0, 0, 0.03)',
                   borderRadius: '0.5rem',
-                  color: '#f8fafc',
+                  color: '#1D1D1F',
                   textAlign: 'left',
                   transition: 'background-color 0.3s ease',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  border: '1px solid rgba(0, 0, 0, 0.1)',
                   cursor: 'pointer'
                 }}>
                   📊 Run Portfolio Analysis
@@ -619,12 +625,12 @@ export default function DashboardPage() {
                 <button style={{
                   width: '100%',
                   padding: '0.75rem',
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  backgroundColor: 'rgba(0, 0, 0, 0.03)',
                   borderRadius: '0.5rem',
-                  color: '#f8fafc',
+                  color: '#1D1D1F',
                   textAlign: 'left',
                   transition: 'background-color 0.3s ease',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  border: '1px solid rgba(0, 0, 0, 0.1)',
                   cursor: 'pointer'
                 }}>
                   🔔 Set New Alert
@@ -632,12 +638,12 @@ export default function DashboardPage() {
                 <button style={{
                   width: '100%',
                   padding: '0.75rem',
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  backgroundColor: 'rgba(0, 0, 0, 0.03)',
                   borderRadius: '0.5rem',
-                  color: '#f8fafc',
+                  color: '#1D1D1F',
                   textAlign: 'left',
                   transition: 'background-color 0.3s ease',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  border: '1px solid rgba(0, 0, 0, 0.1)',
                   cursor: 'pointer'
                 }}>
                   📰 View Market News
@@ -645,12 +651,12 @@ export default function DashboardPage() {
                 <button style={{
                   width: '100%',
                   padding: '0.75rem',
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  backgroundColor: 'rgba(0, 0, 0, 0.03)',
                   borderRadius: '0.5rem',
-                  color: '#f8fafc',
+                  color: '#1D1D1F',
                   textAlign: 'left',
                   transition: 'background-color 0.3s ease',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  border: '1px solid rgba(0, 0, 0, 0.1)',
                   cursor: 'pointer'
                 }}>
                   ⚙️ Manage Settings
@@ -660,12 +666,37 @@ export default function DashboardPage() {
           </div>
 
           {/* AI Trading Tools Section */}
+          {/* AI Trading Components */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
             gap: '2rem',
             marginTop: '2rem'
           }}>
+            {/* Position Sizing Calculator */}
+            <PositionSizingCalculator 
+              accountSize={100000} // Mock account size
+              riskPerTrade={2} // 2% risk per trade
+            />
+            
+            {/* Multi-Timeframe Analysis */}
+            <MultiTimeframeAnalysis 
+              symbol={watchlist[0]?.symbol || 'AAPL'} 
+            />
+            
+            {/* Swing Pattern Scanner */}
+            <SwingPatternScanner 
+              symbol={watchlist[0]?.symbol || 'AAPL'} 
+            />
+            
+            {/* Exit Strategy Manager */}
+            <ExitStrategyManager 
+              symbol={watchlist[0]?.symbol || 'AAPL'}
+              entryPrice={150}
+              currentPrice={watchlist[0]?.price || 152}
+              positionSize={100}
+            />
+            
             {/* Technical Analysis AI */}
             <TechnicalAnalysisAI 
               symbol={watchlist[0]?.symbol || 'AAPL'} 
@@ -683,6 +714,9 @@ export default function DashboardPage() {
             <SentimentAnalysisAI 
               symbol={watchlist[0]?.symbol || 'AAPL'} 
             />
+            
+            {/* Profit-Taking AI */}
+            <ProfitTakingAI />
             
             {/* Portfolio Risk AI */}
             <PortfolioRiskAI 

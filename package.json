@@ -9,10 +9,16 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.38.0",
+    "@supabase/supabase-js": "^2.57.4",
+    "@types/nodemailer": "^7.0.1",
+    "axios": "^1.12.0",
+    "clsx": "^2.1.1",
     "next": "14.0.4",
+    "nodemailer": "^7.0.6",
+    "openai": "^5.20.1",
     "react": "18.2.0",
-    "react-dom": "18.2.0"
+    "react-dom": "18.2.0",
+    "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
     "@types/node": "20.10.5",

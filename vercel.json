@@ -16,11 +16,18 @@
     "SMTP_SERVER": "@smtp_server",
     "SMTP_PORT": "@smtp_port",
     "SMTP_EMAIL": "@smtp_email",
-    "SMTP_PASSWORD": "@smtp_password"
+    "SMTP_PASSWORD": "@smtp_password",
+    "APP_URL": "@app_url"
   },
   "functions": {
     "app/api/**/*.js": {
       "maxDuration": 30
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/notifications/automated",
+      "schedule": "*/30 9-16 * * 1-5"
+    }
+  ]
 }

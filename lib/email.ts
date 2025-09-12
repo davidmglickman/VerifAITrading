@@ -35,7 +35,7 @@ class EmailService {
         },
       }
 
-      this.transporter = nodemailer.createTransporter(config)
+      this.transporter = nodemailer.createTransport(config)
     } catch (error) {
       console.error('Failed to initialize email transporter:', error)
     }
@@ -128,6 +128,27 @@ class EmailService {
     userName: string
   ): Promise<boolean> {
     const template = this.createWelcomeTemplate(userName)
+    
+    return this.sendEmail(
+      userEmail,
+      template.subject,
+      template.html,
+      template.text
+    )
+  }
+
+  async sendProfitTakingAlert(
+    userEmail: string,
+    positions: Array<{
+      symbol: string
+      profit_loss: number
+      profit_loss_percent: number
+      recommendation: string
+      confidence: number
+    }>,
+    totalPnL: number
+  ): Promise<boolean> {
+    const template = this.createProfitTakingTemplate(positions, totalPnL)
     
     return this.sendEmail(
       userEmail,
@@ -590,6 +611,128 @@ class EmailService {
         ` : ''}
         
         View your dashboard: ${process.env.APP_URL}/dashboard
+        
+        © 2024 VerifAI Trading
+      `
+    }
+  }
+
+  private createProfitTakingTemplate(
+    positions: Array<{
+      symbol: string
+      profit_loss: number
+      profit_loss_percent: number
+      recommendation: string
+      confidence: number
+    }>,
+    totalPnL: number
+  ): EmailTemplate {
+    const positionsRows = positions.map(position => `
+      <tr style="border-bottom: 1px solid #e5e7eb;">
+        <td style="padding: 12px 8px; font-weight: bold;">${position.symbol}</td>
+        <td style="padding: 12px 8px; color: #10B981;">
+          +$${position.profit_loss.toFixed(2)} (+${position.profit_loss_percent.toFixed(1)}%)
+        </td>
+        <td style="padding: 12px 8px;">${position.recommendation}</td>
+        <td style="padding: 12px 8px; color: #666; font-size: 12px;">
+          ${position.confidence}%
+        </td>
+      </tr>
+    `).join('')
+
+    return {
+      subject: `💰 Profit-Taking Alert - ${positions.length} Opportunity${positions.length !== 1 ? 'ies' : ''}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Profit-Taking Alert - VerifAI Trading</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #34C759 0%, #32D74B 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 24px;">💰 Profit-Taking Alert</h1>
+            <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0;">AI-Powered Trading Recommendations</p>
+          </div>
+          
+          <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
+            <div style="background: linear-gradient(135deg, #E8F5E8 0%, #F0FFF0 100%); padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #34C759;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <h3 style="margin: 0 0 8px 0; color: #333; font-size: 18px;">📊 Portfolio Performance</h3>
+                  <div style="font-size: 14px; color: #666;">
+                    ${positions.length} profitable position${positions.length !== 1 ? 's' : ''} ready for action
+                  </div>
+                </div>
+                <div style="text-align: right;">
+                  <div style="font-size: 24px; font-weight: 600; color: #34C759;">
+                    +$${totalPnL.toFixed(2)}
+                  </div>
+                  <div style="font-size: 16px; color: #34C759;">
+                    Unrealized P&L
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <h3 style="margin: 0 0 15px 0; color: #333;">🎯 AI Recommendations</h3>
+              <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                  <tr style="background: #f3f4f6;">
+                    <th style="padding: 12px 8px; text-align: left;">Symbol</th>
+                    <th style="padding: 12px 8px; text-align: left;">P&L</th>
+                    <th style="padding: 12px 8px; text-align: left;">Action</th>
+                    <th style="padding: 12px 8px; text-align: left;">Confidence</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${positionsRows}
+                </tbody>
+              </table>
+            </div>
+
+            <div style="background: #FFF9E6; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #FFB800;">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <span style="font-size: 20px;">🛡️</span>
+                <strong style="color: #333; font-size: 14px;">Risk Management</strong>
+              </div>
+              <p style="margin: 0; font-size: 14px; color: #666; line-height: 1.4;">
+                Never let a profitable trade become a loss. Use trailing stops and partial profit-taking to protect your gains.
+              </p>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.APP_URL}/dashboard" 
+                 style="background: linear-gradient(135deg, #34C759 0%, #32D74B 100%); 
+                        color: white; padding: 14px 28px; text-decoration: none; 
+                        border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">
+                Execute Trades Now
+              </a>
+            </div>
+          </div>
+          
+          <div style="text-align: center; padding: 20px; color: #666; font-size: 12px;">
+            <p>© 2024 VerifAI Trading. All rights reserved.</p>
+            <p>These are AI-generated recommendations. Always consider your risk tolerance before executing trades.</p>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `
+        VerifAI Trading - Profit-Taking Alert
+        
+        Portfolio Performance: +$${totalPnL.toFixed(2)} unrealized P&L
+        
+        AI Recommendations:
+        ${positions.map(pos => 
+          `${pos.symbol}: +$${pos.profit_loss.toFixed(2)} (+${pos.profit_loss_percent.toFixed(1)}%) - ${pos.recommendation} (${pos.confidence}% confidence)`
+        ).join('\n')}
+        
+        Risk Management: Never let a profitable trade become a loss. Use trailing stops and partial profit-taking to protect your gains.
+        
+        Execute trades: ${process.env.APP_URL}/dashboard
         
         © 2024 VerifAI Trading
       `
