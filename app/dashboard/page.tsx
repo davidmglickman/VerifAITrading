@@ -3,6 +3,14 @@
 import { useState, useEffect } from 'react'
 import { getCurrentUser, getUserWatchlist, getUserAlerts, signOut } from '../../lib/database'
 import { useRouter } from 'next/navigation'
+import AITradingCoach from '../../components/AITradingCoach'
+import WatchlistManager from '../../components/WatchlistManager'
+import AlertsManager from '../../components/AlertsManager'
+import TechnicalAnalysisAI from '../../components/TechnicalAnalysisAI'
+import OCORecommendationAI from '../../components/OCORecommendationAI'
+import SentimentAnalysisAI from '../../components/SentimentAnalysisAI'
+import PortfolioRiskAI from '../../components/PortfolioRiskAI'
+import HoverButton from '../../components/HoverButton'
 
 // SVG Icons as components
 const TrendingUp = ({ className, style }: { className?: string, style?: React.CSSProperties }) => (
@@ -649,6 +657,46 @@ export default function DashboardPage() {
                 </button>
               </div>
             </div>
+          </div>
+
+          {/* AI Trading Tools Section */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+            gap: '2rem',
+            marginTop: '2rem'
+          }}>
+            {/* Technical Analysis AI */}
+            <TechnicalAnalysisAI 
+              symbol={watchlist[0]?.symbol || 'AAPL'} 
+            />
+            
+            {/* OCO Recommendation AI */}
+            <OCORecommendationAI 
+              symbol={watchlist[0]?.symbol || 'AAPL'}
+              currentPrice={watchlist[0]?.price || 150}
+              accountSize={100000} // Mock account size
+              riskTolerance={2} // Mock risk tolerance
+            />
+            
+            {/* Sentiment Analysis AI */}
+            <SentimentAnalysisAI 
+              symbol={watchlist[0]?.symbol || 'AAPL'} 
+            />
+            
+            {/* Portfolio Risk AI */}
+            <PortfolioRiskAI 
+              positions={watchlist.map(stock => ({
+                symbol: stock.symbol,
+                shares: Math.floor(Math.random() * 100) + 10,
+                avgCost: stock.price * (0.9 + Math.random() * 0.2),
+                currentPrice: stock.price,
+                sector: ['Technology', 'Healthcare', 'Finance', 'Energy'][Math.floor(Math.random() * 4)],
+                marketValue: stock.price * (Math.floor(Math.random() * 100) + 10),
+                gainLoss: (Math.random() - 0.5) * 1000,
+                gainLossPercent: (Math.random() - 0.5) * 20
+              }))}
+            />
           </div>
         </div>
       </main>
