@@ -1,3 +1,5 @@
+import HoverButton from '../components/HoverButton'
+
 export default function HomePage() {
   return (
     <div style={{

@@ -10,6 +10,17 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <style>{`
+          .btn-primary:hover:not(:disabled) {
+            background-color: #0056CC !important;
+          }
+          .btn-secondary:hover:not(:disabled) {
+            background-color: #007AFF !important;
+            color: white !important;
+          }
+        `}</style>
+      </head>
       <body>
         {children}
       </body>
