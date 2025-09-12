@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "deploy": "vercel --prod",
+    "deploy:preview": "vercel",
+    "vercel:link": "vercel link",
+    "vercel:env": "vercel env ls"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
