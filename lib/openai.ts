@@ -186,7 +186,7 @@ export const generateTradingInsight = async (
       messages: [
         {
           role: "system",
-          content: "You are a professional swing trader and market analyst. Provide concise, actionable trading insights. If real market data is unavailable, focus on general trading strategies, sector analysis, and risk management principles that would apply to the given stocks."
+          content: "You are a professional swing trader. Provide VERY concise, actionable insights. Use bullet points. Keep total response under 200 words. Focus only on the most critical trading opportunities."
         },
         {
           role: "user",
@@ -194,7 +194,7 @@ export const generateTradingInsight = async (
         }
       ],
       temperature: 0.4,
-      max_tokens: 800,
+      max_tokens: 400,
     })
 
     return completion.choices[0]?.message?.content || 'Unable to generate insights'
@@ -242,7 +242,7 @@ Format as clear, bullet-pointed insights that I can act on immediately.`
       messages: [
         {
           role: "system",
-          content: "You are an expert swing trading analyst specializing in personalized portfolio insights. Provide specific, actionable recommendations based on the user's exact watchlist and current market conditions. Focus on practical entry/exit points, risk management, and short-term opportunities."
+          content: "You are a swing trading analyst. Provide CONCISE, bullet-pointed insights. Maximum 300 words total. Focus on immediate actionable opportunities with specific entry/exit points."
         },
         {
           role: "user",
@@ -250,7 +250,7 @@ Format as clear, bullet-pointed insights that I can act on immediately.`
         }
       ],
       temperature: 0.3,
-      max_tokens: 1200,
+      max_tokens: 600,
     })
 
     return completion.choices[0]?.message?.content || 'Unable to generate enhanced insights'
@@ -296,7 +296,7 @@ Focus on actionable opportunities I can research and potentially add to my watch
       messages: [
         {
           role: "system",
-          content: "You are a professional swing trading scout who specializes in discovering new trading opportunities. Provide specific stock recommendations with clear entry/exit criteria, focusing on stocks with strong technical setups and fundamental catalysts for 2-4 week swing trades."
+          content: "You are a swing trading scout. Provide VERY concise recommendations. Maximum 300 words. Use bullet points. Focus on 2-3 specific stocks with clear entry/exit prices only."
         },
         {
           role: "user",
@@ -304,7 +304,7 @@ Focus on actionable opportunities I can research and potentially add to my watch
         }
       ],
       temperature: 0.4,
-      max_tokens: 1200,
+      max_tokens: 600,
     })
 
     return completion.choices[0]?.message?.content || 'Unable to generate swing trading opportunities'
