@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { generateTradingInsight } from '../../../../lib/openai'
+import { generateTradingInsight, generateEnhancedTradingInsight, generateSwingTradingOpportunities } from '../../../../lib/openai'
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,17 +15,24 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { symbols, marketData } = body
+    const { symbols, marketData, newsData, companyProfiles, analysisType, currentWatchlist, preferences } = body
 
-    if (!symbols || !Array.isArray(symbols) || symbols.length === 0) {
-      return NextResponse.json({ 
-        error: 'Missing required field: symbols (must be non-empty array)' 
-      }, { status: 400 })
+    // Handle different types of analysis
+    if (analysisType === 'swing_trading_discovery') {
+      // Generate swing trading opportunities
+      const insights = await generateSwingTradingOpportunities(currentWatchlist, preferences)
+      return NextResponse.json({ success: true, data: insights })
+    } else {
+      // Default: watchlist insights
+      if (!symbols || !Array.isArray(symbols) || symbols.length === 0) {
+        return NextResponse.json({ 
+          error: 'Missing required field: symbols (must be non-empty array)' 
+        }, { status: 400 })
+      }
+
+      const insights = await generateEnhancedTradingInsight(symbols, marketData || {}, newsData || {}, companyProfiles || {})
+      return NextResponse.json({ success: true, data: insights })
     }
-
-    const insights = await generateTradingInsight(symbols, marketData || {})
-    
-    return NextResponse.json({ success: true, data: insights })
   } catch (error) {
     console.error('Error in AI insights API:', error)
     

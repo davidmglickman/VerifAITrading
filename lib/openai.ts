@@ -203,3 +203,113 @@ export const generateTradingInsight = async (
     throw new Error('Failed to generate trading insights')
   }
 }
+
+export const generateEnhancedTradingInsight = async (
+  symbols: string[],
+  marketData: Record<string, any>,
+  newsData: Record<string, any>,
+  companyProfiles: Record<string, any>
+): Promise<string> => {
+  try {
+    const hasRealData = Object.values(marketData).some(data => !data.note?.includes('Simulated'))
+    
+    const prompt = `As a professional swing trading advisor, analyze my current watchlist and provide personalized insights.
+
+WATCHLIST: ${symbols.join(', ')}
+
+${hasRealData ? 'REAL-TIME MARKET DATA:' : 'MARKET DATA (Simulated):'}
+${JSON.stringify(marketData, null, 2)}
+
+${Object.keys(newsData).length > 0 ? `RECENT NEWS:
+${Object.entries(newsData).map(([symbol, news]) => 
+  `${symbol}: ${JSON.stringify(news, null, 2)}`
+).join('\n')}` : ''}
+
+${Object.keys(companyProfiles).length > 0 ? `COMPANY PROFILES:
+${JSON.stringify(companyProfiles, null, 2)}` : ''}
+
+Please provide:
+1. **Specific analysis for each stock** in my watchlist
+2. **Entry/exit opportunities** based on current price action
+3. **Risk assessment** for each position
+4. **Portfolio correlation** insights
+5. **Actionable recommendations** for the next 1-2 weeks
+
+Format as clear, bullet-pointed insights that I can act on immediately.`
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "system",
+          content: "You are an expert swing trading analyst specializing in personalized portfolio insights. Provide specific, actionable recommendations based on the user's exact watchlist and current market conditions. Focus on practical entry/exit points, risk management, and short-term opportunities."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.3,
+      max_tokens: 1200,
+    })
+
+    return completion.choices[0]?.message?.content || 'Unable to generate enhanced insights'
+  } catch (error) {
+    console.error('Error generating enhanced trading insights:', error)
+    throw new Error('Failed to generate enhanced trading insights')
+  }
+}
+
+export const generateSwingTradingOpportunities = async (
+  currentWatchlist: string[],
+  preferences: any
+): Promise<string> => {
+  try {
+    const prompt = `As a swing trading specialist, help me discover NEW trading opportunities beyond my current watchlist.
+
+CURRENT WATCHLIST: ${currentWatchlist.join(', ')}
+PREFERENCES:
+- Risk Tolerance: ${preferences.riskTolerance}
+- Time Horizon: ${preferences.timeHorizon}
+- Preferred Sectors: ${preferences.sectors.join(', ')}
+- Market Cap: ${preferences.marketCap}
+
+Please identify 3-5 NEW swing trading opportunities that:
+1. **Are NOT in my current watchlist**
+2. **Show strong swing trading setups** (breakouts, reversals, momentum)
+3. **Match my risk profile and preferences**
+4. **Have clear entry/exit criteria**
+5. **Include specific price targets and stop-losses**
+
+For each recommendation, provide:
+- Stock symbol and company name
+- Current setup/pattern
+- Entry point and reasoning
+- Target price (2-4 week horizon)
+- Stop-loss level
+- Key catalysts to watch
+
+Focus on actionable opportunities I can research and potentially add to my watchlist.`
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "system",
+          content: "You are a professional swing trading scout who specializes in discovering new trading opportunities. Provide specific stock recommendations with clear entry/exit criteria, focusing on stocks with strong technical setups and fundamental catalysts for 2-4 week swing trades."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.4,
+      max_tokens: 1200,
+    })
+
+    return completion.choices[0]?.message?.content || 'Unable to generate swing trading opportunities'
+  } catch (error) {
+    console.error('Error generating swing trading opportunities:', error)
+    throw new Error('Failed to generate swing trading opportunities')
+  }
+}

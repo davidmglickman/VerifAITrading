@@ -28,19 +28,40 @@ const AITradingCoach: React.FC<AITradingCoachProps> = ({ userWatchlist }) => {
       const symbols = userWatchlist.map(item => item.symbol)
       console.log('Generating insights for symbols:', symbols)
       
-      // Try to get market data for watchlist symbols
+      // Try to get comprehensive market data for watchlist symbols
       let marketData: Record<string, any> = {}
+      let newsData: Record<string, any> = {}
+      let companyProfiles: Record<string, any> = {}
       
       try {
-        const quotes = await marketDataService.getMultipleQuotes(symbols.slice(0, 5)) // Limit to 5 stocks
+        // Get real-time quotes
+        const quotes = await marketDataService.getMultipleQuotes(symbols.slice(0, 5))
         console.log('Market quotes received:', quotes)
+        
+        // Get company profiles and news for each stock
+        for (const symbol of symbols.slice(0, 3)) { // Limit to avoid API rate limits
+          try {
+            const [profile, news] = await Promise.all([
+              marketDataService.getCompanyProfile(symbol),
+              marketDataService.getStockNews(symbol)
+            ])
+            companyProfiles[symbol] = profile
+            newsData[symbol] = news.slice(0, 3) // Top 3 news items
+          } catch (error) {
+            console.warn(`Failed to get additional data for ${symbol}:`, error)
+          }
+        }
         
         marketData = quotes.reduce((acc, quote) => {
           acc[quote.symbol] = {
             price: quote.currentPrice,
             change: quote.change,
             changePercent: quote.changePercent,
-            volume: quote.volume
+            volume: quote.volume,
+            high: quote.high,
+            low: quote.low,
+            open: quote.open,
+            previousClose: quote.previousClose
           }
           return acc
         }, {} as Record<string, any>)
@@ -49,10 +70,10 @@ const AITradingCoach: React.FC<AITradingCoachProps> = ({ userWatchlist }) => {
         // Provide fallback market data so AI can still generate insights
         marketData = symbols.reduce((acc, symbol) => {
           acc[symbol] = {
-            price: 50 + Math.random() * 100, // Random price between $50-150
-            change: (Math.random() - 0.5) * 10, // Random change between -5 to +5
-            changePercent: (Math.random() - 0.5) * 10, // Random % change
-            volume: Math.floor(Math.random() * 1000000), // Random volume
+            price: 50 + Math.random() * 100,
+            change: (Math.random() - 0.5) * 10,
+            changePercent: (Math.random() - 0.5) * 10,
+            volume: Math.floor(Math.random() * 1000000),
             note: 'Simulated data - real market data unavailable'
           }
           return acc
@@ -60,14 +81,22 @@ const AITradingCoach: React.FC<AITradingCoachProps> = ({ userWatchlist }) => {
       }
       
       console.log('Final market data for AI:', marketData)
+      console.log('News data:', newsData)
+      console.log('Company profiles:', companyProfiles)
       
-      // Call our secure API route instead of direct OpenAI
+      // Call our enhanced AI insights API
       const response = await fetch('/api/ai/insights', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ symbols, marketData }),
+        body: JSON.stringify({ 
+          symbols, 
+          marketData,
+          newsData,
+          companyProfiles,
+          analysisType: 'watchlist_insights' // Specific to current watchlist
+        }),
       })
       
       const result = await response.json()
@@ -84,6 +113,49 @@ const AITradingCoach: React.FC<AITradingCoachProps> = ({ userWatchlist }) => {
         setInsights(`Unable to generate insights: ${error.message}`)
       } else {
         setInsights('Unable to generate insights at this time. Please try again later.')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const findSwingTradingOpportunities = async () => {
+    setLoading(true)
+    try {
+      console.log('Finding new swing trading opportunities...')
+      
+      // Call our swing trading discovery API
+      const response = await fetch('/api/ai/insights', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          analysisType: 'swing_trading_discovery',
+          currentWatchlist: userWatchlist.map(item => item.symbol),
+          preferences: {
+            riskTolerance: 'moderate',
+            timeHorizon: '2-4 weeks',
+            sectors: ['technology', 'healthcare', 'finance'],
+            marketCap: 'small_to_large'
+          }
+        }),
+      })
+      
+      const result = await response.json()
+      console.log('Swing trading opportunities response:', result)
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to find swing trading opportunities')
+      }
+      
+      setInsights(result.data)
+    } catch (error) {
+      console.error('Error finding swing trading opportunities:', error)
+      if (error instanceof Error) {
+        setInsights(`Unable to find swing trading opportunities: ${error.message}`)
+      } else {
+        setInsights('Unable to find opportunities at this time. Please try again later.')
       }
     } finally {
       setLoading(false)
@@ -158,23 +230,42 @@ const AITradingCoach: React.FC<AITradingCoachProps> = ({ userWatchlist }) => {
         }}>
           🤖 AI Trading Coach
         </h3>
-        <button
-          onClick={generateInsights}
-          disabled={loading}
-          style={{
-            padding: '0.5rem 1rem',
-            background: loading ? '#8e8e93' : '#007AFF',
-            color: 'white',
-            borderRadius: '8px',
-            border: 'none',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            fontSize: '14px',
-            fontWeight: '500',
-            transition: 'all 0.2s ease'
-          }}
-        >
-          {loading ? 'Generating...' : 'Refresh Insights'}
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            onClick={generateInsights}
+            disabled={loading}
+            style={{
+              padding: '0.5rem 1rem',
+              background: loading ? '#8e8e93' : '#007AFF',
+              color: 'white',
+              borderRadius: '8px',
+              border: 'none',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            {loading ? 'Analyzing...' : 'Analyze Watchlist'}
+          </button>
+          <button
+            onClick={findSwingTradingOpportunities}
+            disabled={loading}
+            style={{
+              padding: '0.5rem 1rem',
+              background: loading ? '#8e8e93' : '#34C759',
+              color: 'white',
+              borderRadius: '8px',
+              border: 'none',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            {loading ? 'Searching...' : 'Find New Stocks'}
+          </button>
+        </div>
       </div>
 
       {/* Daily Insights */}
