@@ -10,6 +10,8 @@ import TechnicalAnalysisAI from '../../components/TechnicalAnalysisAI'
 import PortfolioRiskAI from '../../components/PortfolioRiskAI'
 import PositionSizingCalculator from '../../components/PositionSizingCalculator'
 import SwingPatternScanner from '../../components/SwingPatternScanner'
+import EnhancedWatchlistCards from '../../components/EnhancedWatchlistCards'
+import StockDetailView from '../../components/StockDetailView'
 
 // Modern Dashboard with Sidebar Navigation
 export default function DashboardPage() {
@@ -17,6 +19,7 @@ export default function DashboardPage() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [activeView, setActiveView] = useState('overview')
+  const [selectedStock, setSelectedStock] = useState<string | null>(null)
   const aiCoachRef = useRef<any>(null)
   const watchlistRef = useRef<any>(null)
   const [watchlist, setWatchlist] = useState<any[]>([
@@ -51,6 +54,19 @@ export default function DashboardPage() {
     } catch (error) {
       console.error('Sign out failed:', error)
     }
+  }
+
+  const handleStockClick = (symbol: string) => {
+    setSelectedStock(symbol)
+  }
+
+  const handleCloseStockDetail = () => {
+    setSelectedStock(null)
+  }
+
+  const handleSetAlert = async (symbol: string, price: number, type: 'above' | 'below') => {
+    // In production, this would save to database
+    alert(`🔔 Alert set for ${symbol} when price goes ${type} $${price.toFixed(2)}`)
   }
 
   if (loading) {
@@ -219,13 +235,22 @@ export default function DashboardPage() {
         {/* Content Area */}
         <div style={{ minHeight: '500px' }}>
           {activeView === 'overview' && <OverviewContent watchlist={watchlist} />}
-          {activeView === 'watchlist' && <WatchlistContent watchlist={watchlist} setWatchlist={setWatchlist} />}
+          {activeView === 'watchlist' && <WatchlistContent watchlist={watchlist} setWatchlist={setWatchlist} onStockClick={handleStockClick} onSetAlert={handleSetAlert} />}
           {activeView === 'ai-coach' && <AICoachContent watchlist={watchlist} />}
           {activeView === 'analysis' && <AnalysisContent watchlist={watchlist} />}
           {activeView === 'alerts' && <AlertsContent />}
           {activeView === 'tools' && <ToolsContent />}
         </div>
       </div>
+
+      {/* Stock Detail Modal */}
+      {selectedStock && (
+        <StockDetailView 
+          symbol={selectedStock} 
+          onClose={handleCloseStockDetail}
+          onSetAlert={handleSetAlert}
+        />
+      )}
 
       {/* CSS for animations */}
       <style jsx global>{`
@@ -411,16 +436,61 @@ function OverviewContent({ watchlist }: { watchlist: any[] }) {
 }
 
 // Watchlist Content Component
-function WatchlistContent({ watchlist, setWatchlist }: { watchlist: any[], setWatchlist: (list: any[]) => void }) {
+function WatchlistContent({ 
+  watchlist, 
+  setWatchlist, 
+  onStockClick, 
+  onSetAlert 
+}: { 
+  watchlist: any[]
+  setWatchlist: (list: any[]) => void
+  onStockClick: (symbol: string) => void
+  onSetAlert: (symbol: string, price: number, type: 'above' | 'below') => void
+}) {
   return (
-    <div style={{
-      backgroundColor: 'white',
-      borderRadius: '16px',
-      padding: '2rem',
-      border: '1px solid #E5E5E7',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-    }} data-section="watchlist">
-      <WatchlistManager userId="default-user" watchlist={watchlist} onWatchlistUpdate={() => {}} />
+    <div>
+      {/* Enhanced Watchlist Cards */}
+      <div style={{ marginBottom: '2rem' }}>
+        <h3 style={{
+          fontSize: '20px',
+          fontWeight: '600',
+          color: '#1D1D1F',
+          margin: '0 0 1rem 0'
+        }}>
+          📊 Smart Watchlist Cards
+        </h3>
+        <p style={{
+          fontSize: '14px',
+          color: '#86868B',
+          margin: '0 0 1.5rem 0'
+        }}>
+          Click any card to see detailed analysis, news, and technical indicators
+        </p>
+        <EnhancedWatchlistCards 
+          watchlist={watchlist}
+          onStockClick={onStockClick}
+          onSetAlert={onSetAlert}
+        />
+      </div>
+
+      {/* Traditional Watchlist Manager */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '16px',
+        padding: '2rem',
+        border: '1px solid #E5E5E7',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+      }} data-section="watchlist">
+        <h3 style={{
+          fontSize: '18px',
+          fontWeight: '600',
+          color: '#1D1D1F',
+          margin: '0 0 1rem 0'
+        }}>
+          ⚙️ Watchlist Management
+        </h3>
+        <WatchlistManager userId="default-user" watchlist={watchlist} onWatchlistUpdate={() => {}} />
+      </div>
     </div>
   )
 }
