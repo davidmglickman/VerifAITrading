@@ -83,14 +83,29 @@ export default function DashboardPage() {
   useEffect(() => {
     const loadUserData = async () => {
       try {
+        console.log('Dashboard: Checking authentication')
+        
+        // Add a small delay to ensure session is established (especially after OAuth redirect)
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
         // Check if user is authenticated
         const { user: currentUser, error: userError } = await getCurrentUser()
         
-        if (userError || !currentUser) {
-          router.push('/auth/signin')
+        console.log('Dashboard auth check:', { currentUser: currentUser?.email, userError })
+        
+        if (userError) {
+          console.error('User error:', userError)
+          router.push('/auth/signin?error=auth_check_failed')
           return
         }
         
+        if (!currentUser) {
+          console.log('No user found, redirecting to signin')
+          router.push('/auth/signin?error=not_authenticated')
+          return
+        }
+        
+        console.log('User authenticated:', currentUser.email)
         setUser(currentUser)
         
         // Load user's watchlist

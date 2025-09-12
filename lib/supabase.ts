@@ -108,17 +108,19 @@ export const signInWithGoogle = async () => {
   const isDevelopment = process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_DEV_MODE === 'true'
   const forceLocal = process.env.NEXT_PUBLIC_FORCE_LOCAL_REDIRECT === 'true'
   
-  // Force localhost redirect if any development indicator is true
-  const useLocalRedirect = isLocal || isDevelopment || forceLocal
-  const baseUrl = useLocalRedirect
-    ? `${window.location.origin}`
-    : 'https://trade.verifaitrust.com'
+  // Determine redirect URL based on environment
+  let baseUrl: string
+  if (isLocal || isDevelopment || forceLocal) {
+    baseUrl = window.location.origin
+  } else {
+    // Production environment - use the actual production URL
+    baseUrl = window.location.origin // This will be the Vercel URL or custom domain
+  }
   
   console.log('OAuth Debug (supabase.ts FORCED):', {
     isLocal,
     isDevelopment,
     forceLocal,
-    useLocalRedirect,
     hostname: window.location.hostname,
     origin: window.location.origin,
     baseUrl,
