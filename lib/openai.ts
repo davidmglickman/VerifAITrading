@@ -164,22 +164,29 @@ export const generateTradingInsight = async (
   marketData: Record<string, any>
 ): Promise<string> => {
   try {
-    const prompt = `Based on the current market data for the following stocks: ${symbols.join(', ')}, 
-    provide 3-5 key trading insights for today. Focus on:
-    1. Stocks showing unusual activity or breakout patterns
-    2. Sector rotation opportunities
-    3. Risk management considerations
-    4. Potential swing trading setups
+    const hasRealData = Object.values(marketData).some(data => !data.note?.includes('Simulated'))
     
-    Market Data Summary:
-    ${JSON.stringify(marketData, null, 2)}`
+    const prompt = `Based on the following stocks in the watchlist: ${symbols.join(', ')}, 
+    provide 3-5 key trading insights for today. Focus on:
+    1. General market trends and sector analysis
+    2. Swing trading opportunities and patterns
+    3. Risk management considerations
+    4. Portfolio diversification insights
+    5. Technical analysis concepts
+    
+    ${hasRealData ? 'Market Data:' : 'Note: Real market data unavailable, providing general insights for:'} 
+    ${JSON.stringify(marketData, null, 2)}
+    
+    ${!hasRealData ? 'Please provide general trading insights for these symbols based on typical market behavior and trading principles.' : ''}
+    
+    Keep insights practical and actionable for swing traders.`
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
         {
           role: "system",
-          content: "You are a professional day trader and swing trader with expertise in technical analysis and market dynamics. Provide concise, actionable trading insights."
+          content: "You are a professional swing trader and market analyst. Provide concise, actionable trading insights. If real market data is unavailable, focus on general trading strategies, sector analysis, and risk management principles that would apply to the given stocks."
         },
         {
           role: "user",
