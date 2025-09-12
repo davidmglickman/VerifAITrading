@@ -45,7 +45,26 @@ export default function DashboardPage() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [watchlist, setWatchlist] = useState<any[]>([])
+  const [watchlist, setWatchlist] = useState<any[]>([
+    {
+      id: 'default-1',
+      symbol: 'GLXY',
+      added_at: new Date().toISOString(),
+      currentPrice: 0,
+      change: 0,
+      changePercent: 0,
+      volume: 0
+    },
+    {
+      id: 'default-2', 
+      symbol: 'GRGG',
+      added_at: new Date().toISOString(),
+      currentPrice: 0,
+      change: 0,
+      changePercent: 0,
+      volume: 0
+    }
+  ])
   const [alerts, setAlerts] = useState<any[]>([])
 
   // Check authentication and load user data
@@ -77,10 +96,38 @@ export default function DashboardPage() {
         console.log('User authenticated:', currentUser.email)
         setUser(currentUser)
         
-        // Load user's watchlist
+        // Default watchlist items
+        const defaultWatchlist = [
+          {
+            id: 'default-1',
+            symbol: 'GLXY',
+            added_at: new Date().toISOString(),
+            currentPrice: 0,
+            change: 0,
+            changePercent: 0,
+            volume: 0
+          },
+          {
+            id: 'default-2', 
+            symbol: 'GRGG',
+            added_at: new Date().toISOString(),
+            currentPrice: 0,
+            change: 0,
+            changePercent: 0,
+            volume: 0
+          }
+        ]
+        
+        // Load user's watchlist and merge with defaults
         const { data: watchlistData, error: watchlistError } = await getUserWatchlist(currentUser.id)
         if (!watchlistError && watchlistData) {
-          setWatchlist(watchlistData)
+          // Merge user watchlist with defaults, avoiding duplicates
+          const userSymbols = watchlistData.map(item => item.symbol)
+          const filteredDefaults = defaultWatchlist.filter(item => !userSymbols.includes(item.symbol))
+          setWatchlist([...filteredDefaults, ...watchlistData])
+        } else {
+          // If no user watchlist or error, use defaults
+          setWatchlist(defaultWatchlist)
         }
         
         // Load user's alerts
@@ -103,9 +150,37 @@ export default function DashboardPage() {
   const refreshWatchlist = async () => {
     if (user?.id) {
       try {
+        // Default watchlist items
+        const defaultWatchlist = [
+          {
+            id: 'default-1',
+            symbol: 'GLXY',
+            added_at: new Date().toISOString(),
+            currentPrice: 0,
+            change: 0,
+            changePercent: 0,
+            volume: 0
+          },
+          {
+            id: 'default-2', 
+            symbol: 'GRGG',
+            added_at: new Date().toISOString(),
+            currentPrice: 0,
+            change: 0,
+            changePercent: 0,
+            volume: 0
+          }
+        ]
+        
         const { data: watchlistData, error: watchlistError } = await getUserWatchlist(user.id)
         if (!watchlistError && watchlistData) {
-          setWatchlist(watchlistData)
+          // Merge user watchlist with defaults, avoiding duplicates
+          const userSymbols = watchlistData.map(item => item.symbol)
+          const filteredDefaults = defaultWatchlist.filter(item => !userSymbols.includes(item.symbol))
+          setWatchlist([...filteredDefaults, ...watchlistData])
+        } else {
+          // If no user watchlist or error, use defaults
+          setWatchlist(defaultWatchlist)
         }
       } catch (error) {
         console.error('Error refreshing watchlist:', error)
