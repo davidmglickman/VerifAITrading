@@ -2,9 +2,73 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { supabase } from '../lib/supabase'
 
 export default function HomePage() {
   const router = useRouter()
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        setIsAuthenticated(true)
+        // If user is already logged in, redirect to dashboard
+        router.push('/dashboard')
+      } else {
+        setIsAuthenticated(false)
+      }
+      setIsLoading(false)
+    }
+    
+    checkAuth()
+    
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        setIsAuthenticated(true)
+        router.push('/dashboard')
+      } else {
+        setIsAuthenticated(false)
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [router])
+
+  // Show loading while checking auth
+  if (isLoading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%)'
+      }}>
+        <div style={{textAlign: 'center'}}>
+          <div style={{
+            width: '3rem',
+            height: '3rem',
+            border: '4px solid rgba(0, 0, 0, 0.1)',
+            borderTopColor: '#3b82f6',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 1rem'
+          }}></div>
+          <p style={{color: '#6b7280'}}>Loading...</p>
+        </div>
+        <style jsx>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    )
+  }
 
   // Navigation handlers
   const handleSignIn = () => {

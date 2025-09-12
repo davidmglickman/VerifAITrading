@@ -14,56 +14,26 @@ export default function AuthCallback() {
         console.log('Auth callback started')
         setStatus('Verifying authentication...')
         
-        // First, handle the OAuth callback URL
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-        console.log('Session check:', { sessionData, sessionError })
+        // Handle the OAuth callback from the URL
+        const { data, error } = await supabase.auth.getSession()
         
-        if (sessionError) {
-          console.error('Session error:', sessionError)
+        if (error) {
+          console.error('Session error:', error)
           setStatus('Authentication failed. Redirecting...')
           setTimeout(() => router.push('/auth/signin?error=session_failed'), 2000)
           return
         }
 
-        if (sessionData?.session) {
-          console.log('Valid session found:', sessionData.session.user?.email)
+        if (data?.session) {
+          console.log('Valid session found:', data.session.user?.email)
           setStatus('Authentication successful! Redirecting to dashboard...')
           
-          // Wait a moment to ensure session is fully established
-          setTimeout(() => {
-            router.push('/dashboard')
-          }, 1500)
+          // Clear any existing timeouts and redirect immediately
+          router.replace('/dashboard')
         } else {
-          console.log('No session found, checking URL hash')
-          
-          // Check if we have auth tokens in the URL hash (OAuth callback)
-          const hashParams = new URLSearchParams(window.location.hash.substring(1))
-          const accessToken = hashParams.get('access_token')
-          const refreshToken = hashParams.get('refresh_token')
-          
-          if (accessToken) {
-            console.log('Found access token in URL, setting session')
-            setStatus('Setting up your session...')
-            
-            const { data: authData, error: authError } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken || ''
-            })
-            
-            if (authError) {
-              console.error('Auth error:', authError)
-              setStatus('Failed to establish session. Redirecting...')
-              setTimeout(() => router.push('/auth/signin?error=token_failed'), 2000)
-            } else {
-              console.log('Session established successfully')
-              setStatus('Success! Redirecting to dashboard...')
-              setTimeout(() => router.push('/dashboard'), 1500)
-            }
-          } else {
-            console.log('No auth tokens found')
-            setStatus('No authentication data found. Redirecting...')
-            setTimeout(() => router.push('/auth/signin?error=no_tokens'), 2000)
-          }
+          console.log('No session found, redirecting to sign in')
+          setStatus('No active session. Redirecting to sign in...')
+          setTimeout(() => router.push('/auth/signin'), 1500)
         }
       } catch (error) {
         console.error('Unexpected auth callback error:', error)
