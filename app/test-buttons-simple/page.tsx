@@ -31,15 +31,26 @@ export default function TestButtonsSimple() {
     }
   }
 
-  const testWatchlistAdd = async () => {
-    setMessage('Testing Watchlist Add...')
+  const testFinnhubAPI = async () => {
+    setMessage('Testing Finnhub API directly...')
     
     try {
-      // Simulate adding to watchlist
-      const testUserId = 'test-user-id'
-      const testSymbol = 'AAPL'
+      const apiKey = process.env.NEXT_PUBLIC_FINNHUB_API_KEY
+      setMessage(`API Key available: ${apiKey ? 'YES' : 'NO'} (${apiKey?.substring(0,10)}...)`)
       
-      setMessage(`✅ Would add ${testSymbol} for user ${testUserId}`)
+      if (!apiKey) {
+        setMessage('❌ No API key found')
+        return
+      }
+      
+      const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=AAPL&token=${apiKey}`)
+      
+      if (response.ok) {
+        const data = await response.json()
+        setMessage('✅ Finnhub API working: ' + JSON.stringify(data))
+      } else {
+        setMessage('❌ Finnhub API error: ' + response.status + ' ' + response.statusText)
+      }
     } catch (error) {
       setMessage('❌ Error: ' + (error as Error).message)
     }
@@ -89,7 +100,7 @@ export default function TestButtonsSimple() {
           </button>
 
           <button
-            onClick={testWatchlistAdd}
+            onClick={testFinnhubAPI}
             style={{
               width: '100%',
               padding: '1rem',
@@ -102,7 +113,7 @@ export default function TestButtonsSimple() {
               cursor: 'pointer'
             }}
           >
-            Test Watchlist Add
+            Test Finnhub API Directly
           </button>
         </div>
 

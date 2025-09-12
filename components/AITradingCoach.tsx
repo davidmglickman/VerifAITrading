@@ -249,6 +249,7 @@ const AITradingCoach: React.FC<AITradingCoachProps> = ({ userWatchlist }) => {
           <button
             onClick={generateInsights}
             disabled={loading}
+            data-action="generate-insights"
             style={{
               padding: '0.5rem 1rem',
               background: loading ? '#8e8e93' : '#007AFF',

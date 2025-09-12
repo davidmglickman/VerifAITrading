@@ -324,28 +324,51 @@ function OverviewContent({ watchlist }: { watchlist: any[] }) {
           🚀 Quick Actions
         </h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <button style={{
-            padding: '0.75rem',
-            border: '1px solid #007AFF',
-            borderRadius: '8px',
-            background: '#007AFF',
-            color: 'white',
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: 'pointer'
-          }}>
+          <button 
+            onClick={() => {
+              // Trigger AI insights generation
+              const insightsButton = document.querySelector('[data-action="generate-insights"]') as HTMLButtonElement
+              if (insightsButton) {
+                insightsButton.click()
+              } else {
+                alert('AI Insights feature is loading. Please wait a moment and try again.')
+              }
+            }}
+            style={{
+              padding: '0.75rem',
+              border: '1px solid #007AFF',
+              borderRadius: '8px',
+              background: '#007AFF',
+              color: 'white',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer'
+            }}
+          >
             Get AI Insights
           </button>
-          <button style={{
-            padding: '0.75rem',
-            border: '1px solid #E5E5E7',
-            borderRadius: '8px',
-            background: 'white',
-            color: '#1D1D1F',
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: 'pointer'
-          }}>
+          <button 
+            onClick={() => {
+              // Show add stock input
+              const addInput = document.querySelector('[data-action="add-stock-input"]') as HTMLInputElement
+              if (addInput) {
+                addInput.focus()
+                addInput.scrollIntoView({ behavior: 'smooth' })
+              } else {
+                alert('Watchlist feature is loading. Please wait a moment and try again.')
+              }
+            }}
+            style={{
+              padding: '0.75rem',
+              border: '1px solid #E5E5E7',
+              borderRadius: '8px',
+              background: 'white',
+              color: '#1D1D1F',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer'
+            }}
+          >
             Add Stock to Watchlist
           </button>
         </div>

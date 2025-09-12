@@ -185,6 +185,7 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
             type="text"
             placeholder="Search for stocks (e.g., AAPL, TSLA, GOOGL)..."
             value={searchQuery}
+            data-action="add-stock-input"
             onChange={(e) => {
               setSearchQuery(e.target.value)
               searchStocks(e.target.value)
