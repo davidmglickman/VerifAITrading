@@ -21,9 +21,14 @@ const AITradingCoach: React.FC<AITradingCoachProps> = ({ userWatchlist }) => {
   }, [userWatchlist])
 
   const generateInsights = async () => {
-    if (userWatchlist.length === 0) return
+    if (userWatchlist.length === 0) {
+      alert('Add some stocks to your watchlist first!')
+      return
+    }
     
     setLoading(true)
+    setInsights('🤖 Analyzing your watchlist...')
+    
     try {
       const symbols = userWatchlist.map(item => item.symbol)
       console.log('Generating insights for symbols:', symbols)
@@ -107,13 +112,23 @@ const AITradingCoach: React.FC<AITradingCoachProps> = ({ userWatchlist }) => {
       }
       
       setInsights(result.data)
+      console.log('✅ AI insights generated successfully!')
     } catch (error) {
       console.error('Error generating insights:', error)
+      let errorMessage = 'Unable to generate insights at this time.'
+      
       if (error instanceof Error) {
-        setInsights(`Unable to generate insights: ${error.message}`)
-      } else {
-        setInsights('Unable to generate insights at this time. Please try again later.')
+        if (error.message.includes('API key')) {
+          errorMessage = '🔧 AI service needs configuration. Contact support.'
+        } else if (error.message.includes('rate limit')) {
+          errorMessage = '⏱️ AI service is busy. Please try again in a moment.'
+        } else {
+          errorMessage = `❌ ${error.message}`
+        }
       }
+      
+      setInsights(errorMessage)
+      alert(`AI Analysis Failed: ${errorMessage}`)
     } finally {
       setLoading(false)
     }

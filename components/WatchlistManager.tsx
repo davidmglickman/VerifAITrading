@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { addToWatchlist, removeFromWatchlist, getUserWatchlist } from '../lib/database'
+import { addToWatchlist, removeFromWatchlist, getUserWatchlist } from '../lib/supabase'
 import { marketDataService } from '../lib/market-data'
 
 interface WatchlistManagerProps {
@@ -84,22 +84,31 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
   const addStock = async (symbol: string) => {
     try {
       console.log('Adding stock to watchlist:', { userId, symbol })
-      const result = await addToWatchlist(userId, symbol)
-      console.log('Add to watchlist result:', result)
       
-      if (result.error) {
-        console.error('Database error:', result.error)
-        alert(`Failed to add stock to watchlist: ${result.error.message}`)
+      // Check if stock is already in watchlist
+      const isAlreadyAdded = watchlist.some(item => item.symbol === symbol)
+      if (isAlreadyAdded) {
+        alert(`${symbol} is already in your watchlist!`)
+        return
+      }
+      
+      const { data, error } = await addToWatchlist(userId, symbol)
+      console.log('Add to watchlist result:', { data, error })
+      
+      if (error) {
+        console.error('Database error:', error)
+        alert(`Failed to add ${symbol} to watchlist: ${error.message}`)
         return
       }
       
       setSearchQuery('')
       setSearchResults([])
       onWatchlistUpdate()
+      alert(`✅ ${symbol} added to your watchlist!`)
       console.log('Stock added successfully!')
     } catch (error) {
       console.error('Error adding stock to watchlist:', error)
-      alert('Failed to add stock to watchlist')
+      alert(`❌ Failed to add ${symbol} to watchlist. Please try again.`)
     }
   }
 
