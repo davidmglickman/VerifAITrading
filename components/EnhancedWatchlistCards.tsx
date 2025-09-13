@@ -397,6 +397,24 @@ export default function EnhancedWatchlistCards({
               }}>
                 {stock.companyName}
               </p>
+              <div style={{ marginTop: '6px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <span style={{
+                  fontSize: '11px',
+                  padding: '2px 8px',
+                  borderRadius: '999px',
+                  backgroundColor: stock.historicalAnalysis.market.session === 'OPEN' ? '#E6F7EE' : '#F2F2F7',
+                  color: stock.historicalAnalysis.market.session === 'OPEN' ? '#2F855A' : '#6E6E73',
+                  border: '1px solid #E5E5E7'
+                }}>
+                  {stock.historicalAnalysis.market.session.replace('_', ' ')}
+                </span>
+                <span style={{ fontSize: '10px', color: '#8E8E93' }}>
+                  {stock.historicalAnalysis.market.session === 'OPEN' ?
+                    `Closes ${new Date(stock.historicalAnalysis.market.nextClose).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ET` :
+                    `Opens ${new Date(stock.historicalAnalysis.market.nextOpen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ET`
+                  }
+                </span>
+              </div>
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{
@@ -454,6 +472,9 @@ export default function EnhancedWatchlistCards({
             </div>
             <div style={{ fontSize: '12px', color: '#6E6E73', marginBottom: '8px' }}>
               {stock.ocoRecommendation.reasoning}
+              {stock.historicalAnalysis.market.session !== 'OPEN' && (
+                <span style={{ color: '#8E8E93' }}> • Session: {stock.historicalAnalysis.market.session.replace('_', ' ')} — consider placing alerts or waiting for regular hours.</span>
+              )}
             </div>
             <div style={{
               display: 'grid',

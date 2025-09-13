@@ -1,4 +1,5 @@
 import { marketDataService } from './market-data'
+import { getMarketTimeContext, MarketSession } from './market-hours'
 
 export interface HistoricalDataPoint {
   date: string
@@ -47,6 +48,12 @@ export interface SwingTradingAnalysis {
     riskReward: number
     timeframe: string
   }
+  market: {
+    session: MarketSession
+    nowET: string
+    nextOpen: string
+    nextClose: string
+  }
   historicalPatterns: {
     avgSwingDuration: number // days
     avgSwingMagnitude: number // percentage
@@ -65,6 +72,7 @@ export class HistoricalAnalyzer {
       // Get historical data
       const historicalData = await this.getHistoricalData(symbol)
       const currentPrice = historicalData[historicalData.length - 1]?.close || 0
+      const timeCtx = getMarketTimeContext()
 
       // Perform comprehensive analysis
       const trendAnalysis = this.analyzeTrend(historicalData)
@@ -91,7 +99,8 @@ export class HistoricalAnalyzer {
         supportResistance,
         swingPoints,
         technicalIndicators,
-        patterns
+        patterns,
+        market: timeCtx
       })
 
       return {
@@ -105,6 +114,12 @@ export class HistoricalAnalyzer {
         technicalIndicators,
         swingTradingScore: swingScore,
         entryOpportunity,
+        market: {
+          session: timeCtx.session,
+          nowET: timeCtx.nowET.toISOString(),
+          nextOpen: timeCtx.nextOpen.toISOString(),
+          nextClose: timeCtx.nextClose.toISOString()
+        },
         historicalPatterns: patterns
       }
     } catch (error) {
@@ -461,7 +476,7 @@ export class HistoricalAnalyzer {
   }
 
   private identifyEntryOpportunity(params: any): SwingTradingAnalysis['entryOpportunity'] {
-    const { currentPrice, trendAnalysis, supportResistance, technicalIndicators, patterns } = params
+    const { currentPrice, trendAnalysis, supportResistance, technicalIndicators, patterns, market } = params
     
     // Determine opportunity type
     let type: 'BREAKOUT' | 'PULLBACK' | 'REVERSAL' | 'CONTINUATION' | 'NONE' = 'NONE'
@@ -499,6 +514,13 @@ export class HistoricalAnalyzer {
     
     // Adjust confidence based on historical success
     confidence = Math.min(confidence * (patterns.successRate / 100), 95)
+
+    // Adjust for market session timing
+    if (market?.session && market.session !== 'OPEN') {
+      // Reduce execution confidence slightly if not regular hours
+      const sessionPenalty = market.session === 'PRE_MARKET' ? 0.9 : market.session === 'AFTER_HOURS' ? 0.85 : 0.8
+      confidence = Math.round(confidence * sessionPenalty)
+    }
     
     const riskReward = Math.abs((priceTarget - currentPrice) / (currentPrice - stopLoss))
     
@@ -542,6 +564,12 @@ export class HistoricalAnalyzer {
         stopLoss: 0,
         riskReward: 1,
         timeframe: '7 days'
+      },
+      market: {
+        session: 'CLOSED',
+        nowET: new Date().toISOString(),
+        nextOpen: new Date().toISOString(),
+        nextClose: new Date().toISOString(),
       },
       historicalPatterns: {
         avgSwingDuration: 7,
