@@ -1,34 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { marketDataService } from '../lib/market-data'
-import { historicalAnalyzer, SwingTradingAnalysis } from '../lib/historical-analysis'
+import { aiStockAnalysisService, AIStockAnalysis } from '../lib/ai-stock-analysis'
 
 interface StockCardData {
   symbol: string
   companyName: string
-  currentPrice: number
-  change: number
-  changePercent: number
-  volume: number
-  historicalAnalysis: SwingTradingAnalysis
-  ocoRecommendation: {
-    action: 'BUY' | 'SELL' | 'HOLD'
-    confidence: number
-    entryPrice: number
-    stopLoss: number
-    takeProfit: number
-    reasoning: string
-  }
-  profitPotential: {
-    upside: number
-    downside: number
-    riskReward: number
-  }
+  aiAnalysis: AIStockAnalysis
   topPick: boolean
-  candlePattern: string
-  trend: 'BULLISH' | 'BEARISH' | 'NEUTRAL'
-  newsCount: number
   lastUpdated: string
 }
 
@@ -55,400 +34,159 @@ export default function EnhancedWatchlistCards({
     try {
       const enhancedData: StockCardData[] = await Promise.all(
         watchlist.map(async (stock) => {
-          // Get market data with fallback
-          const quote = await fetchQuoteWithFallback(stock.symbol)
+          console.log(`🔍 Analyzing ${stock.symbol} with AI...`)
           
-          // Get historical analysis - this is the key enhancement!
-          const historicalAnalysis = await historicalAnalyzer.analyzeStock(stock.symbol)
-          
-          // Generate AI-powered OCO recommendation based on historical data
-          const ocoRec = await generateOCORecommendationFromHistory(stock.symbol, quote, historicalAnalysis)
-          
-          // Calculate profit potential based on historical patterns
-          const profitPotential = calculateProfitPotentialFromHistory(quote, historicalAnalysis)
+          // Get comprehensive AI analysis
+          const aiAnalysis = await aiStockAnalysisService.analyzeStock(stock.symbol)
           
           return {
             symbol: stock.symbol,
             companyName: await getCompanyName(stock.symbol),
-            currentPrice: quote?.currentPrice || historicalAnalysis.technicalIndicators.movingAverages.sma20 || 50,
-            change: quote?.change ?? 0,
-            changePercent: quote?.changePercent ?? 0,
-            volume: quote?.volume ?? historicalAnalysis.volumeProfile.averageVolume,
-            historicalAnalysis,
-            ocoRecommendation: ocoRec,
-            profitPotential,
-            topPick: historicalAnalysis.swingTradingScore > 75 && historicalAnalysis.entryOpportunity.confidence > 70,
-            candlePattern: getCurrentCandlePattern(historicalAnalysis),
-            trend: mapTrendToBullishBearish(historicalAnalysis.currentTrend),
-            newsCount: Math.floor(Math.random() * 8) + 1,
+            aiAnalysis,
+            topPick: aiAnalysis.confidence > 80 && (aiAnalysis.recommendation === 'STRONG_BUY' || aiAnalysis.recommendation === 'BUY'),
             lastUpdated: new Date().toLocaleTimeString()
           }
         })
       )
       
-      // Sort by swing trading score and top picks first
+      // Sort by confidence and recommendation strength
       enhancedData.sort((a, b) => {
-        if (a.topPick !== b.topPick) return a.topPick ? -1 : 1
-        return b.historicalAnalysis.swingTradingScore - a.historicalAnalysis.swingTradingScore
+        // Top picks first
+        if (a.topPick && !b.topPick) return -1
+        if (!a.topPick && b.topPick) return 1
+        
+        // Then by confidence
+        return b.aiAnalysis.confidence - a.aiAnalysis.confidence
       })
       
       setStocksData(enhancedData)
     } catch (error) {
-      console.error('Error loading stock data:', error)
+      console.error('Error loading enhanced stock data:', error)
+      setStocksData([])
     } finally {
       setLoading(false)
     }
   }
 
-  const fetchQuoteWithFallback = async (symbol: string) => {
-    try {
-      const q = await marketDataService.getStockQuote(symbol)
-      return q
-    } catch (e) {
-      try {
-        const y = await marketDataService.getQuoteFromYahoo(symbol)
-        return y
-      } catch (e2) {
-        return null
-      }
-    }
-  }
-
-  const generateOCORecommendationFromHistory = async (symbol: string, quote: any, historical: SwingTradingAnalysis) => {
-    const currentPrice = quote?.currentPrice || historical.technicalIndicators.movingAverages.sma20
-    const opportunity = historical.entryOpportunity
-    
-    // Use historical analysis to make smarter recommendations
-    let action: 'BUY' | 'SELL' | 'HOLD'
-    let reasoning: string
-    let confidence = opportunity.confidence
-    
-    if (opportunity.type === 'BREAKOUT' && historical.currentTrend === 'UPTREND') {
-      action = 'BUY'
-      reasoning = `Historical breakout pattern detected. ${historical.historicalPatterns.successRate}% success rate on similar setups.`
-    } else if (opportunity.type === 'PULLBACK' && historical.currentTrend === 'UPTREND') {
-      action = 'BUY'
-      reasoning = `Pullback to support in uptrend. Avg swing: ${historical.historicalPatterns.avgSwingMagnitude}% over ${historical.historicalPatterns.avgSwingDuration} days.`
-    } else if (opportunity.type === 'REVERSAL') {
-      action = historical.technicalIndicators.rsi < 30 ? 'BUY' : 'SELL'
-      reasoning = `Reversal opportunity based on RSI(${historical.technicalIndicators.rsi.toFixed(1)}) and historical swing patterns.`
-    } else if (historical.swingTradingScore < 40) {
-      action = 'HOLD'
-      reasoning = `Low swing trading score (${historical.swingTradingScore}/100). Wait for better setup.`
-      confidence = Math.max(confidence, 60)
-    } else {
-      action = historical.currentTrend === 'UPTREND' ? 'BUY' : historical.currentTrend === 'DOWNTREND' ? 'SELL' : 'HOLD'
-      reasoning = `${historical.currentTrend} with ${historical.trendStrength.toFixed(0)}% strength. ${historical.volumeProfile.volumeTrend.toLowerCase()} volume.`
+  const getCompanyName = async (symbol: string): Promise<string> => {
+    const companyNames: Record<string, string> = {
+      'AAPL': 'Apple Inc.',
+      'MSFT': 'Microsoft Corporation',
+      'GOOGL': 'Alphabet Inc.',
+      'AMZN': 'Amazon.com Inc.',
+      'TSLA': 'Tesla Inc.',
+      'NVDA': 'NVIDIA Corporation',
+      'META': 'Meta Platforms Inc.',
+      'NFLX': 'Netflix Inc.',
+      'GLXY': 'Galaxy Digital Holdings Ltd.',
+      'GRGG': 'Garmin Ltd.'
     }
     
-    return {
-      action,
-      confidence: Math.min(confidence, 95),
-      entryPrice: opportunity.priceTarget > currentPrice ? currentPrice * 1.01 : currentPrice * 0.99,
-      stopLoss: opportunity.stopLoss,
-      takeProfit: opportunity.priceTarget,
-      reasoning
-    }
+    return companyNames[symbol] || `${symbol} Corp.`
   }
 
-  const calculateProfitPotentialFromHistory = (quote: any, historical: SwingTradingAnalysis) => {
-    const currentPrice = quote?.currentPrice || historical.technicalIndicators.movingAverages.sma20
-    const opportunity = historical.entryOpportunity
-    
-    // Use historical patterns for more accurate profit potential
-    const historicalMagnitude = historical.historicalPatterns.avgSwingMagnitude
-    const upside = opportunity.type !== 'NONE' 
-      ? ((opportunity.priceTarget - currentPrice) / currentPrice) * 100
-      : historicalMagnitude * 0.7 // Conservative estimate based on historical average
-    
-    const downside = opportunity.type !== 'NONE'
-      ? ((currentPrice - opportunity.stopLoss) / currentPrice) * 100
-      : historicalMagnitude * 0.3 // Risk typically smaller than reward in good setups
-    
-    const riskReward = opportunity.riskReward > 0 ? opportunity.riskReward : Math.abs(upside / Math.max(downside, 1))
-    
-    return {
-      upside: Number(Math.abs(upside).toFixed(1)),
-      downside: Number(Math.abs(downside).toFixed(1)),
-      riskReward: Number(riskReward.toFixed(1))
-    }
-  }
-
-  const getCurrentCandlePattern = (historical: SwingTradingAnalysis): string => {
-    const rsi = historical.technicalIndicators.rsi
-    const bollinger = historical.technicalIndicators.bollinger
-    const trend = historical.currentTrend
-    
-    if (bollinger.squeeze) return 'Bollinger Squeeze'
-    if (rsi > 70) return 'Overbought Doji'
-    if (rsi < 30) return 'Oversold Hammer'
-    if (trend === 'UPTREND' && historical.entryOpportunity.type === 'PULLBACK') return 'Bullish Pullback'
-    if (trend === 'UPTREND') return 'Bullish Continuation'
-    if (trend === 'DOWNTREND') return 'Bearish Continuation'
-    
-    const patterns = ['Inside Bar', 'Pin Bar', 'Engulfing', 'Star Formation']
-    return patterns[Math.floor(Math.random() * patterns.length)]
-  }
-
-  const mapTrendToBullishBearish = (trend: 'UPTREND' | 'DOWNTREND' | 'SIDEWAYS'): 'BULLISH' | 'BEARISH' | 'NEUTRAL' => {
-    switch (trend) {
-      case 'UPTREND': return 'BULLISH'
-      case 'DOWNTREND': return 'BEARISH'
-      case 'SIDEWAYS': return 'NEUTRAL'
-      default: return 'NEUTRAL'
-    }
-  }
-
-  // Generate AI-powered OCO orders based on market analysis and risk profile
   const generateOCOByRiskProfile = (stock: StockCardData, profile: 'conservative' | 'moderate' | 'aggressive') => {
-    const currentPrice = stock.currentPrice
-    const historical = stock.historicalAnalysis
-    const volume = stock.volume
-    const change = stock.changePercent
+    const currentPrice = stock.aiAnalysis.currentPrice
+    const { stopLoss, takeProfit } = stock.aiAnalysis
     
-    // Calculate market volatility from recent price action
-    const volatility = Math.abs(change) / 100 // Current day volatility as proxy
-    const avgVolatility = historical.technicalIndicators.rsi > 70 || historical.technicalIndicators.rsi < 30 ? 0.035 : 0.025
-    
-    // Use technical indicators for support/resistance levels
-    const sma20 = historical.technicalIndicators.movingAverages.sma20
-    const sma50 = historical.technicalIndicators.movingAverages.sma50
-    const rsi = historical.technicalIndicators.rsi
-    
-    // Determine trend strength and direction
-    const trendStrength = historical.trendStrength / 100
-    const isUptrend = historical.currentTrend === 'UPTREND'
-    const isDowntrend = historical.currentTrend === 'DOWNTREND'
-    
-    // Calculate support and resistance based on moving averages and price action
-    const nearTermSupport = Math.min(sma20, currentPrice * 0.97)
-    const nearTermResistance = Math.max(sma20, currentPrice * 1.03)
-    
-    // AI-driven risk profile adjustments based on market conditions
-    let riskMultiplier, rewardMultiplier, entryAdjustment
+    // Adjust based on risk profile
+    let adjustedStop, adjustedTarget, positionSize, confidence
     
     if (profile === 'conservative') {
-      // Conservative: Tight stops, lower targets, safer entries
-      riskMultiplier = 0.6 + (volatility * 5) // 0.6-1.1x based on volatility
-      rewardMultiplier = 1.0 + (trendStrength * 0.5) // 1.0-1.5x based on trend
-      entryAdjustment = isUptrend ? 0.002 : 0.008 // Less aggressive entry in uptrends
+      adjustedStop = currentPrice - (currentPrice - stopLoss) * 0.7  // Tighter stop
+      adjustedTarget = currentPrice + (takeProfit - currentPrice) * 0.6  // Lower target
+      positionSize = '25% position'
+      confidence = Math.min(stock.aiAnalysis.confidence + 5, 95)
     } else if (profile === 'moderate') {
-      // Moderate: Balanced approach with market adaptation
-      riskMultiplier = 0.8 + (volatility * 8) // 0.8-1.6x based on volatility
-      rewardMultiplier = 1.5 + (trendStrength * 1.0) // 1.5-2.5x based on trend
-      entryAdjustment = isUptrend ? 0.005 : 0.012 // Moderate entry timing
+      adjustedStop = stopLoss
+      adjustedTarget = takeProfit
+      positionSize = '50% position'
+      confidence = stock.aiAnalysis.confidence
     } else { // aggressive
-      // Aggressive: Wide stops, higher targets, swing for the fences
-      riskMultiplier = 1.2 + (volatility * 12) // 1.2-2.4x based on volatility  
-      rewardMultiplier = 2.0 + (trendStrength * 1.5) // 2.0-3.5x based on trend
-      entryAdjustment = isUptrend ? 0.008 : 0.018 // More aggressive entry
+      adjustedStop = currentPrice - (currentPrice - stopLoss) * 1.3  // Wider stop
+      adjustedTarget = currentPrice + (takeProfit - currentPrice) * 1.4  // Higher target
+      positionSize = '75% position'
+      confidence = Math.max(stock.aiAnalysis.confidence - 10, 60)
     }
     
-    // Adjust for RSI conditions
-    if (rsi > 70) { // Overbought
-      rewardMultiplier *= 0.8 // Reduce targets
-      riskMultiplier *= 1.2 // Wider stops (expect pullback)
-    } else if (rsi < 30) { // Oversold  
-      rewardMultiplier *= 1.3 // Increase targets (expect bounce)
-      riskMultiplier *= 0.9 // Tighter stops
-    }
-    
-    // Adjust for volume conditions
-    const volumeRatio = volume > historical.volumeProfile.averageVolume ? 1.2 : 0.9
-    rewardMultiplier *= volumeRatio
-    
-    // Calculate entry price based on trend and market microstructure
-    let entryPrice
-    if (isUptrend && rsi < 60) {
-      // Uptrend + not overbought: Buy near current price
-      entryPrice = currentPrice * (1 - entryAdjustment * 0.5)
-    } else if (isDowntrend && rsi > 40) {
-      // Downtrend + not oversold: Wait for better entry
-      entryPrice = currentPrice * (1 + entryAdjustment)
-    } else {
-      // Sideways or mixed signals: Use current price with small adjustment
-      entryPrice = currentPrice * (1 - entryAdjustment * 0.7)
-    }
-    
-    // Calculate stop loss using support levels and volatility
-    const atrEstimate = currentPrice * (avgVolatility + volatility) / 2
-    const technicalStop = nearTermSupport * 0.98
-    const volatilityStop = entryPrice - (atrEstimate * riskMultiplier)
-    const stopLoss = Math.max(technicalStop, volatilityStop)
-    
-    // Calculate profit target using resistance levels and reward multiplier
-    const technicalTarget = nearTermResistance * 1.02
-    const riskAmount = entryPrice - stopLoss
-    const rewardAmount = riskAmount * rewardMultiplier
-    const volatilityTarget = entryPrice + rewardAmount
-    const profitTarget = Math.min(technicalTarget, volatilityTarget)
-    
-    // Ensure minimum risk/reward ratio
-    const calculatedRR = (profitTarget - entryPrice) / (entryPrice - stopLoss)
-    
-    // Calculate position sizing suggestion based on account risk
-    const accountRiskPercent = profile === 'conservative' ? 1 : profile === 'moderate' ? 2 : 3
-    const positionRisk = (entryPrice - stopLoss) / entryPrice * 100
-    const suggestedPositionSize = `${accountRiskPercent}% account risk (${positionRisk.toFixed(1)}% stop distance)`
-    
-    // Add market context to the recommendation
-    let marketContext = ''
-    if (historical.market.session !== 'OPEN') {
-      marketContext = ` • Market ${historical.market.session.replace('_', ' ').toLowerCase()}`
-    }
-    if (rsi > 70) {
-      marketContext += ' • Overbought conditions'
-    } else if (rsi < 30) {
-      marketContext += ' • Oversold conditions'
-    }
-    if (trendStrength > 0.7) {
-      marketContext += ` • Strong ${historical.currentTrend.toLowerCase()}`
-    }
+    const riskAmount = currentPrice - adjustedStop
+    const rewardAmount = adjustedTarget - currentPrice
+    const riskReward = rewardAmount / riskAmount
     
     return {
-      entry: entryPrice,
-      stop: stopLoss,
-      target: profitTarget,
-      riskReward: calculatedRR,
-      positionSize: suggestedPositionSize,
-      marketContext,
-      confidence: Math.min(85, 50 + (trendStrength * 30) + (volumeRatio > 1 ? 10 : 0)),
-      reasoning: `${profile.toUpperCase()}: Entry at $${entryPrice.toFixed(2)} based on ${historical.currentTrend} (${(trendStrength*100).toFixed(0)}% strength), RSI ${rsi.toFixed(0)}, volatility ${(avgVolatility*100).toFixed(1)}%${marketContext}`
-    }
-  }
-
-  const generateOCORecommendation = async (symbol: string, quote: any) => {
-    // Simulate AI-powered OCO analysis
-    const price = quote?.currentPrice || 100
-    const volatility = Math.random() * 0.1 + 0.02 // 2-12% volatility
-    
-    const actions: ('BUY' | 'SELL' | 'HOLD')[] = ['BUY', 'SELL', 'HOLD']
-    const action = actions[Math.floor(Math.random() * actions.length)]
-    
-    let entryPrice, stopLoss, takeProfit
-    
-    if (action === 'BUY') {
-      entryPrice = price * (1 + Math.random() * 0.02) // Entry slightly above current
-      stopLoss = price * (1 - volatility)
-      takeProfit = price * (1 + volatility * 2)
-    } else if (action === 'SELL') {
-      entryPrice = price * (1 - Math.random() * 0.02) // Entry slightly below current
-      stopLoss = price * (1 + volatility)
-      takeProfit = price * (1 - volatility * 2)
-    } else {
-      entryPrice = price
-      stopLoss = price * (1 - volatility * 0.5)
-      takeProfit = price * (1 + volatility * 0.5)
-    }
-    
-    const confidence = Math.floor(Math.random() * 40) + 60 // 60-100% confidence
-    
-    const reasonings = [
-      'Strong technical breakout above resistance',
-      'Bullish divergence in RSI indicator',
-      'Volume surge indicates institutional interest',
-      'Earnings momentum building for next quarter',
-      'Support level holding with buying interest',
-      'Overbought conditions suggest pullback',
-      'Breaking below key moving average',
-      'Low volume indicates consolidation phase'
-    ]
-    
-    return {
-      action,
+      entry: currentPrice,
+      stop: adjustedStop,
+      target: adjustedTarget,
+      riskReward,
+      positionSize,
       confidence,
-      entryPrice: Number(entryPrice.toFixed(2)),
-      stopLoss: Number(stopLoss.toFixed(2)),
-      takeProfit: Number(takeProfit.toFixed(2)),
-      reasoning: reasonings[Math.floor(Math.random() * reasonings.length)]
+      reasoning: stock.aiAnalysis.reasoning
     }
   }
 
-  const calculateProfitPotential = (quote: any, oco: any) => {
-    const currentPrice = quote?.currentPrice || 100
-    const upside = ((oco.takeProfit - currentPrice) / currentPrice) * 100
-    const downside = ((currentPrice - oco.stopLoss) / currentPrice) * 100
-    const riskReward = Math.abs(upside / downside)
-    
-    return {
-      upside: Number(upside.toFixed(1)),
-      downside: Number(downside.toFixed(1)),
-      riskReward: Number(riskReward.toFixed(1))
-    }
-  }
-
-  const getCompanyName = async (symbol: string): Promise<string> => {
-    const names: { [key: string]: string } = {
-      'AAPL': 'Apple Inc.',
-      'TSLA': 'Tesla Inc.',
-      'GOOGL': 'Alphabet Inc.',
-      'MSFT': 'Microsoft Corp.',
-      'AMZN': 'Amazon.com Inc.',
-      'GRGG': 'Garmin Ltd.',
-      'GLXY': 'Galaxy Digital Holdings Ltd.'
-    }
-    return names[symbol] || `${symbol} Corp.`
-  }
-
-  const generateCandlePattern = () => {
-    const patterns = ['Doji', 'Hammer', 'Shooting Star', 'Bullish Engulfing', 'Bearish Engulfing', 'Morning Star', 'Evening Star']
-    return patterns[Math.floor(Math.random() * patterns.length)]
-  }
-
-  const getActionColor = (action: string) => {
-    switch (action) {
+  const getRecommendationColor = (recommendation: AIStockAnalysis['recommendation']) => {
+    switch (recommendation) {
+      case 'STRONG_BUY': return '#00C851'
       case 'BUY': return '#34C759'
-      case 'SELL': return '#FF3B30'
       case 'HOLD': return '#FF9500'
+      case 'SELL': return '#FF6B47'
+      case 'STRONG_SELL': return '#FF3B30'
       default: return '#8E8E93'
     }
   }
 
-  const getTrendColor = (trend: string) => {
-    switch (trend) {
-      case 'BULLISH': return '#34C759'
-      case 'BEARISH': return '#FF3B30'
-      case 'NEUTRAL': return '#8E8E93'
-      default: return '#8E8E93'
+  const getRecommendationLabel = (recommendation: AIStockAnalysis['recommendation']) => {
+    switch (recommendation) {
+      case 'STRONG_BUY': return 'STRONG BUY'
+      case 'BUY': return 'BUY'
+      case 'HOLD': return 'HOLD'
+      case 'SELL': return 'SELL'
+      case 'STRONG_SELL': return 'STRONG SELL'
+      default: return 'HOLD'
     }
   }
 
   if (loading) {
     return (
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
-        gap: '1.5rem',
-        padding: '1rem'
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: '3rem',
+        backgroundColor: 'white',
+        borderRadius: '16px',
+        border: '1px solid rgba(0, 0, 0, 0.06)'
       }}>
-        {[1, 2, 3].map(i => (
-          <div key={i} style={{
-            backgroundColor: 'white',
-            borderRadius: '16px',
-            padding: '1.5rem',
-            border: '1px solid #E5E5E7',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-            height: '280px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              border: '4px solid #E5E5E7',
-              borderTopColor: '#007AFF',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite'
-            }}></div>
-          </div>
-        ))}
-        <style jsx>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '32px',
+            height: '32px',
+            border: '3px solid #007AFF',
+            borderRadius: '50%',
+            borderTopColor: 'transparent',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 1rem'
+          }} />
+          <p style={{ color: '#86868B', fontSize: '16px', margin: 0 }}>
+            🤖 AI analyzing your watchlist stocks...
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  if (stocksData.length === 0) {
+    return (
+      <div style={{
+        padding: '3rem',
+        textAlign: 'center',
+        backgroundColor: 'white',
+        borderRadius: '16px',
+        border: '1px solid rgba(0, 0, 0, 0.06)'
+      }}>
+        <p style={{ color: '#86868B', fontSize: '16px', margin: 0 }}>
+          No stocks in your watchlist. Add some symbols to get AI-powered analysis!
+        </p>
       </div>
     )
   }
@@ -456,367 +194,265 @@ export default function EnhancedWatchlistCards({
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
+      gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
       gap: '1.5rem',
-      padding: '1rem'
+      marginBottom: '2rem'
     }}>
       {stocksData.map((stock) => (
         <div
           key={stock.symbol}
+          onClick={() => onStockClick(stock.symbol)}
           style={{
             backgroundColor: 'white',
             borderRadius: '16px',
+            border: stock.topPick ? '2px solid #007AFF' : '1px solid rgba(0, 0, 0, 0.06)',
             padding: '1.5rem',
-            border: stock.topPick ? '2px solid #FF9500' : '1px solid #E5E5E7',
-            boxShadow: stock.topPick 
-              ? '0 4px 20px rgba(255, 149, 0, 0.2)' 
-              : '0 2px 8px rgba(0, 0, 0, 0.1)',
             cursor: 'pointer',
-            transition: 'all 0.3s ease',
-            position: 'relative'
-          }}
-          onClick={() => onStockClick(stock.symbol)}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-4px)'
-            e.currentTarget.style.boxShadow = stock.topPick 
-              ? '0 8px 25px rgba(255, 149, 0, 0.3)' 
-              : '0 8px 25px rgba(0, 0, 0, 0.15)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)'
-            e.currentTarget.style.boxShadow = stock.topPick 
-              ? '0 4px 20px rgba(255, 149, 0, 0.2)' 
-              : '0 2px 8px rgba(0, 0, 0, 0.1)'
+            transition: 'all 0.2s ease',
+            boxShadow: stock.topPick ? '0 8px 25px rgba(0, 122, 255, 0.15)' : '0 4px 12px rgba(0, 0, 0, 0.05)',
+            position: 'relative',
+            overflow: 'hidden'
           }}
         >
           {/* Top Pick Badge */}
           {stock.topPick && (
             <div style={{
               position: 'absolute',
-              top: '-8px',
-              right: '16px',
-              backgroundColor: '#FF9500',
+              top: '12px',
+              right: '12px',
+              backgroundColor: '#007AFF',
               color: 'white',
-              padding: '4px 12px',
-              borderRadius: '12px',
-              fontSize: '12px',
+              padding: '4px 8px',
+              borderRadius: '6px',
+              fontSize: '10px',
               fontWeight: '600'
             }}>
-              🎯 TOP PICK
+              ⭐ TOP PICK
             </div>
           )}
 
-          {/* Header */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            marginBottom: '1rem'
-          }}>
-            <div>
-              <h3 style={{
-                fontSize: '20px',
+          {/* Header with Symbol and Company */}
+          <div style={{ marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <div style={{
+                fontSize: '24px',
                 fontWeight: '700',
                 color: '#1D1D1F',
-                margin: '0 0 4px 0'
+                marginRight: '0.5rem'
               }}>
                 {stock.symbol}
-              </h3>
-              <p style={{
-                fontSize: '14px',
-                color: '#8E8E93',
-                margin: 0
+              </div>
+              <div style={{
+                fontSize: '12px',
+                fontWeight: '500',
+                color: 'white',
+                backgroundColor: stock.aiAnalysis.riskLevel === 'LOW' ? '#34C759' : 
+                              stock.aiAnalysis.riskLevel === 'MEDIUM' ? '#FF9500' : '#FF3B30',
+                padding: '2px 6px',
+                borderRadius: '4px'
               }}>
-                {stock.companyName}
-              </p>
-              <div style={{ marginTop: '6px', display: 'flex', gap: '6px', alignItems: 'center' }}>
-                <span style={{
-                  fontSize: '11px',
-                  padding: '2px 8px',
-                  borderRadius: '999px',
-                  backgroundColor: stock.historicalAnalysis.market.session === 'OPEN' ? '#E6F7EE' : '#F2F2F7',
-                  color: stock.historicalAnalysis.market.session === 'OPEN' ? '#2F855A' : '#6E6E73',
-                  border: '1px solid #E5E5E7'
-                }}>
-                  {stock.historicalAnalysis.market.session.replace('_', ' ')}
-                </span>
-                <span style={{ fontSize: '10px', color: '#8E8E93' }}>
-                  {stock.historicalAnalysis.market.session === 'OPEN' ?
-                    `Closes ${new Date(stock.historicalAnalysis.market.nextClose).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ET` :
-                    `Opens ${new Date(stock.historicalAnalysis.market.nextOpen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ET`
-                  }
-                </span>
+                {stock.aiAnalysis.riskLevel} RISK
               </div>
             </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{
-                fontSize: '18px',
-                fontWeight: '600',
-                color: '#1D1D1F'
-              }}>
-                ${stock.currentPrice.toFixed(2)}
-              </div>
-              <div style={{
-                fontSize: '14px',
-                color: stock.change >= 0 ? '#34C759' : '#FF3B30',
-                fontWeight: '500'
-              }}>
-                {stock.change >= 0 ? '+' : ''}{stock.change.toFixed(2)} ({stock.changePercent.toFixed(1)}%)
-              </div>
+            <div style={{
+              fontSize: '14px',
+              color: '#8E8E93',
+              marginBottom: '0.5rem'
+            }}>
+              {stock.companyName}
+            </div>
+            <div style={{
+              fontSize: '12px',
+              fontWeight: '500',
+              color: '#007AFF',
+              backgroundColor: '#F0F9FF',
+              padding: '4px 8px',
+              borderRadius: '6px',
+              display: 'inline-block'
+            }}>
+              Market Open • Updated: {stock.lastUpdated}
             </div>
           </div>
 
-          {/* Enhanced OCO Recommendation Section */}
-          <div style={{
-            background: 'linear-gradient(135deg, #F8F9FA 0%, #E8F4FD 100%)',
-            borderRadius: '16px',
-            padding: '16px',
-            marginBottom: '1rem',
-            border: '2px solid',
-            borderColor: stock.ocoRecommendation.action === 'BUY' ? '#34C759' : 
-                        stock.ocoRecommendation.action === 'SELL' ? '#FF3B30' : '#8E8E93'
-          }}>
-            {/* Header with Action & Confidence */}
+          {/* Current Price and Change */}
+          <div style={{ marginBottom: '1rem' }}>
             <div style={{
+              fontSize: '28px',
+              fontWeight: '700',
+              color: '#1D1D1F',
+              marginBottom: '0.25rem'
+            }}>
+              ${stock.aiAnalysis.currentPrice.toFixed(2)}
+            </div>
+            <div style={{
+              fontSize: '14px',
+              fontWeight: '500',
+              color: stock.aiAnalysis.priceChangePercent >= 0 ? '#34C759' : '#FF3B30',
               display: 'flex',
-              justifyContent: 'space-between',
               alignItems: 'center',
-              marginBottom: '12px'
+              gap: '0.5rem'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{
-                  backgroundColor: getActionColor(stock.ocoRecommendation.action),
-                  color: 'white',
-                  padding: '8px 16px',
-                  borderRadius: '12px',
-                  fontSize: '14px',
-                  fontWeight: '700',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
-                }}>
-                  🎯 {stock.ocoRecommendation.action} Signal
-                </span>
-                <div style={{
-                  backgroundColor: 'rgba(0, 122, 255, 0.1)',
-                  color: '#007AFF',
-                  padding: '4px 8px',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  fontWeight: '600'
-                }}>
-                  {stock.ocoRecommendation.confidence}% Confidence
-                </div>
-              </div>
-              <div style={{
-                backgroundColor: 'rgba(0, 0, 0, 0.05)',
-                padding: '4px 8px',
-                borderRadius: '6px',
-                fontSize: '11px',
-                color: '#6E6E73'
-              }}>
-                Score: {stock.historicalAnalysis.swingTradingScore}/100
-              </div>
-            </div>
-
-            {/* AI Reasoning */}
-            <div style={{ 
-              fontSize: '13px', 
-              color: '#1D1D1F', 
-              marginBottom: '16px',
-              lineHeight: '1.4',
-              fontWeight: '500'
-            }}>
-              💡 <strong>AI Analysis:</strong> {stock.ocoRecommendation.reasoning}
-              {stock.historicalAnalysis.market.session !== 'OPEN' && (
-                <div style={{ 
-                  marginTop: '8px', 
-                  color: '#FF9500', 
-                  fontSize: '12px',
-                  padding: '8px',
-                  backgroundColor: 'rgba(255, 149, 0, 0.1)',
-                  borderRadius: '8px'
-                }}>
-                  ⏰ <strong>Market Closed:</strong> {stock.historicalAnalysis.market.session.replace('_', ' ')} — Consider placing alerts or waiting for regular hours.
-                </div>
-              )}
-            </div>
-
-            {/* OCO Order Levels */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr 1fr',
-              gap: '12px',
-              marginBottom: '16px'
-            }}>
-              <div style={{
-                backgroundColor: 'white',
-                padding: '12px',
-                borderRadius: '12px',
-                textAlign: 'center',
-                border: '1px solid #E5E5E7'
-              }}>
-                <div style={{ 
-                  fontSize: '11px', 
-                  color: '#8E8E93', 
-                  fontWeight: '600',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  marginBottom: '4px'
-                }}>
-                  📈 Entry
-                </div>
-                <div style={{ 
-                  fontSize: '16px', 
-                  fontWeight: '700',
-                  color: '#007AFF'
-                }}>
-                  ${stock.ocoRecommendation.entryPrice.toFixed(2)}
-                </div>
-              </div>
-              <div style={{
-                backgroundColor: 'white',
-                padding: '12px',
-                borderRadius: '12px',
-                textAlign: 'center',
-                border: '1px solid #E5E5E7'
-              }}>
-                <div style={{ 
-                  fontSize: '11px', 
-                  color: '#8E8E93', 
-                  fontWeight: '600',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  marginBottom: '4px'
-                }}>
-                  🛡️ Stop
-                </div>
-                <div style={{ 
-                  fontSize: '16px', 
-                  fontWeight: '700',
-                  color: '#FF3B30'
-                }}>
-                  ${stock.ocoRecommendation.stopLoss.toFixed(2)}
-                </div>
-              </div>
-              <div style={{
-                backgroundColor: 'white',
-                padding: '12px',
-                borderRadius: '12px',
-                textAlign: 'center',
-                border: '1px solid #E5E5E7'
-              }}>
-                <div style={{ 
-                  fontSize: '11px', 
-                  color: '#8E8E93', 
-                  fontWeight: '600',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  marginBottom: '4px'
-                }}>
-                  🎯 Target
-                </div>
-                <div style={{ 
-                  fontSize: '16px', 
-                  fontWeight: '700',
-                  color: '#34C759'
-                }}>
-                  ${stock.ocoRecommendation.takeProfit.toFixed(2)}
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Action Buttons */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '8px',
-              marginBottom: '12px'
-            }}>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  // Set alert for entry price
-                  onSetAlert(
-                    stock.symbol, 
-                    stock.ocoRecommendation.entryPrice,
-                    stock.ocoRecommendation.entryPrice > stock.currentPrice ? 'above' : 'below'
-                  )
-                }}
-                style={{
-                  padding: '8px 12px',
-                  backgroundColor: '#007AFF',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                🔔 Set Entry Alert
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  // Copy OCO order details to clipboard
-                  const ocoText = `${stock.symbol} OCO Order:\nEntry: $${stock.ocoRecommendation.entryPrice.toFixed(2)}\nStop: $${stock.ocoRecommendation.stopLoss.toFixed(2)}\nTarget: $${stock.ocoRecommendation.takeProfit.toFixed(2)}\nConfidence: ${stock.ocoRecommendation.confidence}%`
-                  navigator.clipboard.writeText(ocoText)
-                  alert('📋 OCO order details copied to clipboard!')
-                }}
-                style={{
-                  padding: '8px 12px',
-                  backgroundColor: 'white',
-                  color: '#007AFF',
-                  border: '1px solid #007AFF',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                📋 Copy OCO
-              </button>
-            </div>
-
-            {/* Historical Context */}
-            <div style={{
-              padding: '10px 12px',
-              backgroundColor: 'rgba(21, 101, 192, 0.1)',
-              borderRadius: '8px',
-              fontSize: '11px',
-              color: '#1565C0',
-              fontWeight: '500'
-            }}>
-              📊 <strong>Historical Performance:</strong> Avg swing {stock.historicalAnalysis.historicalPatterns.avgSwingMagnitude}% over {stock.historicalAnalysis.historicalPatterns.avgSwingDuration} days | Success rate: {stock.historicalAnalysis.historicalPatterns.successRate}%
+              <span>
+                {stock.aiAnalysis.priceChangePercent >= 0 ? '+' : ''}
+                ${stock.aiAnalysis.priceChange.toFixed(2)} 
+                ({stock.aiAnalysis.priceChangePercent.toFixed(2)}%)
+              </span>
+              <span style={{ fontSize: '12px', color: '#8E8E93' }}>
+                Vol: {(stock.aiAnalysis.volume / 1000000).toFixed(1)}M
+              </span>
             </div>
           </div>
 
-          {/* OCO Risk Profile Options */}
+          {/* AI Recommendation */}
+          <div style={{ marginBottom: '1rem' }}>
+            <div style={{
+              fontSize: '16px',
+              fontWeight: '700',
+              color: getRecommendationColor(stock.aiAnalysis.recommendation),
+              marginBottom: '0.5rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              🎯 {getRecommendationLabel(stock.aiAnalysis.recommendation)} Signal
+              <span style={{
+                fontSize: '12px',
+                backgroundColor: 'rgba(0, 122, 255, 0.1)',
+                color: '#007AFF',
+                padding: '2px 6px',
+                borderRadius: '4px'
+              }}>
+                {stock.aiAnalysis.confidence}% Confidence
+              </span>
+            </div>
+            <div style={{
+              fontSize: '13px',
+              color: '#6E6E73',
+              lineHeight: '1.4',
+              marginBottom: '0.75rem'
+            }}>
+              💡 AI Analysis: {stock.aiAnalysis.reasoning}
+            </div>
+          </div>
+
+          {/* Price Targets */}
           <div style={{
-            backgroundColor: '#F8F9FA',
-            borderRadius: '16px',
-            padding: '16px',
-            marginBottom: '1rem',
-            border: '1px solid #E5E5E7'
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr 1fr',
+            gap: '0.75rem',
+            marginBottom: '1rem'
           }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '12px', color: '#8E8E93', marginBottom: '0.25rem' }}>📈 Entry</div>
+              <div style={{ fontSize: '16px', fontWeight: '600', color: '#007AFF' }}>
+                ${stock.aiAnalysis.entryPrice.toFixed(2)}
+              </div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '12px', color: '#8E8E93', marginBottom: '0.25rem' }}>🛡️ Stop</div>
+              <div style={{ fontSize: '16px', fontWeight: '600', color: '#FF3B30' }}>
+                ${stock.aiAnalysis.stopLoss.toFixed(2)}
+              </div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '12px', color: '#8E8E93', marginBottom: '0.25rem' }}>🎯 Target</div>
+              <div style={{ fontSize: '16px', fontWeight: '600', color: '#34C759' }}>
+                ${stock.aiAnalysis.takeProfit.toFixed(2)}
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '0.5rem',
+            marginBottom: '1rem'
+          }}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onSetAlert(stock.symbol, stock.aiAnalysis.takeProfit, 'above')
+              }}
+              style={{
+                padding: '0.5rem',
+                backgroundColor: '#F0F9FF',
+                border: '1px solid #007AFF',
+                borderRadius: '8px',
+                color: '#007AFF',
+                fontSize: '12px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              🔔 Set Entry Alert
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                const ocoText = `${stock.symbol} AI RECOMMENDATION:
+Signal: ${getRecommendationLabel(stock.aiAnalysis.recommendation)}
+Confidence: ${stock.aiAnalysis.confidence}%
+Entry: $${stock.aiAnalysis.entryPrice.toFixed(2)}
+Stop: $${stock.aiAnalysis.stopLoss.toFixed(2)}
+Target: $${stock.aiAnalysis.takeProfit.toFixed(2)}
+R/R: ${stock.aiAnalysis.riskRewardRatio.toFixed(1)}:1
+Risk Level: ${stock.aiAnalysis.riskLevel}
+Time Horizon: ${stock.aiAnalysis.timeHorizon}
+
+AI Analysis: ${stock.aiAnalysis.reasoning}`
+                navigator.clipboard.writeText(ocoText)
+                alert('📋 AI analysis copied to clipboard!')
+              }}
+              style={{
+                padding: '0.5rem',
+                backgroundColor: '#F0FDF4',
+                border: '1px solid #34C759',
+                borderRadius: '8px',
+                color: '#34C759',
+                fontSize: '12px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              📋 Copy OCO
+            </button>
+          </div>
+
+          {/* Technical Analysis Summary */}
+          <div style={{
+            padding: '0.75rem',
+            backgroundColor: '#F8F9FA',
+            borderRadius: '8px',
+            marginBottom: '1rem'
+          }}>
+            <div style={{ fontSize: '12px', color: '#6E6E73', marginBottom: '0.5rem' }}>
+              📊 Technical Analysis: {stock.aiAnalysis.technicalSignals.trend} ({stock.aiAnalysis.confidence}%)
+            </div>
+            <div style={{ fontSize: '11px', color: '#8E8E93', lineHeight: '1.4' }}>
+              {stock.aiAnalysis.technicalSignals.momentum} momentum • {stock.aiAnalysis.technicalSignals.volatility} volatility
+              <br/>
+              Support: ${stock.aiAnalysis.technicalSignals.support.toFixed(2)} • 
+              Resistance: ${stock.aiAnalysis.technicalSignals.resistance.toFixed(2)}
+            </div>
+          </div>
+
+          {/* OCO Trading Strategies */}
+          <div style={{ marginBottom: '1rem' }}>
             <div style={{
               fontSize: '14px',
               fontWeight: '600',
               color: '#1D1D1F',
-              marginBottom: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
+              marginBottom: '0.75rem',
+              textAlign: 'center'
             }}>
-              🎯 <span>OCO Trading Strategies</span>
+              🎯<br/>OCO Trading Strategies
             </div>
-            
+
             <div style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr 1fr',
-              gap: '8px'
+              gap: '0.5rem'
             }}>
               {/* Conservative OCO */}
               <button
@@ -881,14 +517,14 @@ AI Analysis: ${moderateOCO.reasoning}`
                 style={{
                   padding: '12px 8px',
                   backgroundColor: 'white',
-                  border: '2px solid #007AFF',
+                  border: '2px solid #FF9500',
                   borderRadius: '12px',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
                   textAlign: 'center'
                 }}
               >
-                <div style={{ fontSize: '12px', fontWeight: '700', color: '#007AFF', marginBottom: '4px' }}>
+                <div style={{ fontSize: '12px', fontWeight: '700', color: '#FF9500', marginBottom: '4px' }}>
                   ⚖️ MODERATE
                 </div>
                 <div style={{ fontSize: '10px', color: '#6E6E73', marginBottom: '6px' }}>
@@ -899,7 +535,7 @@ AI Analysis: ${moderateOCO.reasoning}`
                   Stop: ${generateOCOByRiskProfile(stock, 'moderate').stop.toFixed(2)}<br/>
                   Target: ${generateOCOByRiskProfile(stock, 'moderate').target.toFixed(2)}
                 </div>
-                <div style={{ fontSize: '8px', color: '#007AFF', marginTop: '4px', fontWeight: '600' }}>
+                <div style={{ fontSize: '8px', color: '#FF9500', marginTop: '4px', fontWeight: '600' }}>
                   R/R: {generateOCOByRiskProfile(stock, 'moderate').riskReward.toFixed(1)}:1
                 </div>
               </button>
@@ -957,77 +593,74 @@ AI Analysis: ${aggressiveOCO.reasoning}`
               color: '#6E6E73',
               textAlign: 'center'
             }}>
-              🤖 AI analyzes RSI, moving averages, volatility, trend strength & volume to generate dynamic OCO levels
+              🤖 AI analyzes technical indicators, sentiment, volume & market conditions to generate dynamic OCO levels
             </div>
           </div>
 
-          {/* Profit Potential & Historical Info */}
+          {/* Profit Potential & Risk Analysis */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: '1fr 1fr',
             gap: '12px',
             marginBottom: '1rem'
           }}>
-            <div>
-              <div style={{ fontSize: '12px', color: '#8E8E93', marginBottom: '4px' }}>
+            <div style={{
+              padding: '0.75rem',
+              backgroundColor: 'rgba(52, 199, 89, 0.1)',
+              borderRadius: '8px',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '12px', color: '#6E6E73', marginBottom: '0.25rem' }}>
                 Profit Potential
               </div>
-              <div style={{ fontSize: '14px', fontWeight: '600', color: '#34C759' }}>
-                +{stock.profitPotential.upside}%
-              </div>
-              <div style={{ fontSize: '12px', color: '#FF3B30' }}>
-                Risk: -{stock.profitPotential.downside}%
-              </div>
-              <div style={{ fontSize: '11px', color: '#8E8E93' }}>
-                R/R: {stock.profitPotential.riskReward}:1
-              </div>
-              {stock.historicalAnalysis.entryOpportunity.type !== 'NONE' && (
-                <div style={{ fontSize: '10px', color: '#FF9500', fontWeight: '500', marginTop: '2px' }}>
-                  🎯 {stock.historicalAnalysis.entryOpportunity.type}
-                </div>
-              )}
-            </div>
-            <div>
-              <div style={{ fontSize: '12px', color: '#8E8E93', marginBottom: '4px' }}>
-                Technical Analysis
-              </div>
-              <div style={{
-                fontSize: '12px',
-                color: getTrendColor(stock.trend),
-                fontWeight: '600',
-                marginBottom: '2px'
-              }}>
-                {stock.trend} ({stock.historicalAnalysis.trendStrength.toFixed(0)}%)
-              </div>
-              <div style={{ fontSize: '11px', color: '#6E6E73' }}>
-                {stock.candlePattern}
-              </div>
-              <div style={{ fontSize: '11px', color: '#8E8E93' }}>
-                RSI: {stock.historicalAnalysis.technicalIndicators.rsi.toFixed(1)}
+              <div style={{ fontSize: '18px', fontWeight: '700', color: '#34C759' }}>
+                +{stock.aiAnalysis.profitPotential.upside}%
               </div>
               <div style={{ fontSize: '10px', color: '#8E8E93' }}>
-                Vol: {stock.historicalAnalysis.volumeProfile.volumeTrend}
+                Risk: -{stock.aiAnalysis.profitPotential.downside}%
+              </div>
+              <div style={{ fontSize: '10px', color: '#8E8E93' }}>
+                R/R: {stock.aiAnalysis.riskRewardRatio}:1
+              </div>
+            </div>
+            <div style={{
+              padding: '0.75rem',
+              backgroundColor: 'rgba(0, 122, 255, 0.1)',
+              borderRadius: '8px',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '12px', color: '#6E6E73', marginBottom: '0.25rem' }}>
+                AI Probability
+              </div>
+              <div style={{ fontSize: '18px', fontWeight: '700', color: '#007AFF' }}>
+                {stock.aiAnalysis.profitPotential.probability}%
+              </div>
+              <div style={{ fontSize: '10px', color: '#8E8E93' }}>
+                {stock.aiAnalysis.timeHorizon} horizon
+              </div>
+              <div style={{ fontSize: '10px', color: '#8E8E93' }}>
+                {stock.aiAnalysis.sentiment.newsCount} news items
               </div>
             </div>
           </div>
 
-          {/* Action Buttons */}
+          {/* Alert Buttons */}
           <div style={{
-            display: 'flex',
-            gap: '8px'
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '0.5rem'
           }}>
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                onSetAlert(stock.symbol, stock.ocoRecommendation.takeProfit, 'above')
+                onSetAlert(stock.symbol, stock.aiAnalysis.takeProfit, 'above')
               }}
               style={{
-                flex: 1,
-                padding: '8px',
-                backgroundColor: '#34C759',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
+                padding: '0.5rem',
+                backgroundColor: 'rgba(52, 199, 89, 0.1)',
+                border: '1px solid #34C759',
+                borderRadius: '6px',
+                color: '#34C759',
                 fontSize: '12px',
                 fontWeight: '600',
                 cursor: 'pointer'
@@ -1038,15 +671,14 @@ AI Analysis: ${aggressiveOCO.reasoning}`
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                onSetAlert(stock.symbol, stock.ocoRecommendation.stopLoss, 'below')
+                onSetAlert(stock.symbol, stock.aiAnalysis.stopLoss, 'below')
               }}
               style={{
-                flex: 1,
-                padding: '8px',
-                backgroundColor: '#FF3B30',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
+                padding: '0.5rem',
+                backgroundColor: 'rgba(255, 59, 48, 0.1)',
+                border: '1px solid #FF3B30',
+                borderRadius: '6px',
+                color: '#FF3B30',
                 fontSize: '12px',
                 fontWeight: '600',
                 cursor: 'pointer'
@@ -1055,18 +687,16 @@ AI Analysis: ${aggressiveOCO.reasoning}`
               ⚠️ Stop Alert
             </button>
           </div>
-
-          {/* Last Updated */}
-          <div style={{
-            fontSize: '10px',
-            color: '#C7C7CC',
-            textAlign: 'center',
-            marginTop: '8px'
-          }}>
-            Updated: {stock.lastUpdated}
-          </div>
         </div>
       ))}
+
+      {/* CSS for animations */}
+      <style jsx>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   )
 }
