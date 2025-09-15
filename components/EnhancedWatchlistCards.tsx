@@ -199,6 +199,124 @@ export default function EnhancedWatchlistCards({
     }
   }
 
+  // Generate AI-powered OCO orders based on market analysis and risk profile
+  const generateOCOByRiskProfile = (stock: StockCardData, profile: 'conservative' | 'moderate' | 'aggressive') => {
+    const currentPrice = stock.currentPrice
+    const historical = stock.historicalAnalysis
+    const volume = stock.volume
+    const change = stock.changePercent
+    
+    // Calculate market volatility from recent price action
+    const volatility = Math.abs(change) / 100 // Current day volatility as proxy
+    const avgVolatility = historical.technicalIndicators.rsi > 70 || historical.technicalIndicators.rsi < 30 ? 0.035 : 0.025
+    
+    // Use technical indicators for support/resistance levels
+    const sma20 = historical.technicalIndicators.movingAverages.sma20
+    const sma50 = historical.technicalIndicators.movingAverages.sma50
+    const rsi = historical.technicalIndicators.rsi
+    
+    // Determine trend strength and direction
+    const trendStrength = historical.trendStrength / 100
+    const isUptrend = historical.currentTrend === 'UPTREND'
+    const isDowntrend = historical.currentTrend === 'DOWNTREND'
+    
+    // Calculate support and resistance based on moving averages and price action
+    const nearTermSupport = Math.min(sma20, currentPrice * 0.97)
+    const nearTermResistance = Math.max(sma20, currentPrice * 1.03)
+    
+    // AI-driven risk profile adjustments based on market conditions
+    let riskMultiplier, rewardMultiplier, entryAdjustment
+    
+    if (profile === 'conservative') {
+      // Conservative: Tight stops, lower targets, safer entries
+      riskMultiplier = 0.6 + (volatility * 5) // 0.6-1.1x based on volatility
+      rewardMultiplier = 1.0 + (trendStrength * 0.5) // 1.0-1.5x based on trend
+      entryAdjustment = isUptrend ? 0.002 : 0.008 // Less aggressive entry in uptrends
+    } else if (profile === 'moderate') {
+      // Moderate: Balanced approach with market adaptation
+      riskMultiplier = 0.8 + (volatility * 8) // 0.8-1.6x based on volatility
+      rewardMultiplier = 1.5 + (trendStrength * 1.0) // 1.5-2.5x based on trend
+      entryAdjustment = isUptrend ? 0.005 : 0.012 // Moderate entry timing
+    } else { // aggressive
+      // Aggressive: Wide stops, higher targets, swing for the fences
+      riskMultiplier = 1.2 + (volatility * 12) // 1.2-2.4x based on volatility  
+      rewardMultiplier = 2.0 + (trendStrength * 1.5) // 2.0-3.5x based on trend
+      entryAdjustment = isUptrend ? 0.008 : 0.018 // More aggressive entry
+    }
+    
+    // Adjust for RSI conditions
+    if (rsi > 70) { // Overbought
+      rewardMultiplier *= 0.8 // Reduce targets
+      riskMultiplier *= 1.2 // Wider stops (expect pullback)
+    } else if (rsi < 30) { // Oversold  
+      rewardMultiplier *= 1.3 // Increase targets (expect bounce)
+      riskMultiplier *= 0.9 // Tighter stops
+    }
+    
+    // Adjust for volume conditions
+    const volumeRatio = volume > historical.volumeProfile.averageVolume ? 1.2 : 0.9
+    rewardMultiplier *= volumeRatio
+    
+    // Calculate entry price based on trend and market microstructure
+    let entryPrice
+    if (isUptrend && rsi < 60) {
+      // Uptrend + not overbought: Buy near current price
+      entryPrice = currentPrice * (1 - entryAdjustment * 0.5)
+    } else if (isDowntrend && rsi > 40) {
+      // Downtrend + not oversold: Wait for better entry
+      entryPrice = currentPrice * (1 + entryAdjustment)
+    } else {
+      // Sideways or mixed signals: Use current price with small adjustment
+      entryPrice = currentPrice * (1 - entryAdjustment * 0.7)
+    }
+    
+    // Calculate stop loss using support levels and volatility
+    const atrEstimate = currentPrice * (avgVolatility + volatility) / 2
+    const technicalStop = nearTermSupport * 0.98
+    const volatilityStop = entryPrice - (atrEstimate * riskMultiplier)
+    const stopLoss = Math.max(technicalStop, volatilityStop)
+    
+    // Calculate profit target using resistance levels and reward multiplier
+    const technicalTarget = nearTermResistance * 1.02
+    const riskAmount = entryPrice - stopLoss
+    const rewardAmount = riskAmount * rewardMultiplier
+    const volatilityTarget = entryPrice + rewardAmount
+    const profitTarget = Math.min(technicalTarget, volatilityTarget)
+    
+    // Ensure minimum risk/reward ratio
+    const calculatedRR = (profitTarget - entryPrice) / (entryPrice - stopLoss)
+    
+    // Calculate position sizing suggestion based on account risk
+    const accountRiskPercent = profile === 'conservative' ? 1 : profile === 'moderate' ? 2 : 3
+    const positionRisk = (entryPrice - stopLoss) / entryPrice * 100
+    const suggestedPositionSize = `${accountRiskPercent}% account risk (${positionRisk.toFixed(1)}% stop distance)`
+    
+    // Add market context to the recommendation
+    let marketContext = ''
+    if (historical.market.session !== 'OPEN') {
+      marketContext = ` • Market ${historical.market.session.replace('_', ' ').toLowerCase()}`
+    }
+    if (rsi > 70) {
+      marketContext += ' • Overbought conditions'
+    } else if (rsi < 30) {
+      marketContext += ' • Oversold conditions'
+    }
+    if (trendStrength > 0.7) {
+      marketContext += ` • Strong ${historical.currentTrend.toLowerCase()}`
+    }
+    
+    return {
+      entry: entryPrice,
+      stop: stopLoss,
+      target: profitTarget,
+      riskReward: calculatedRR,
+      positionSize: suggestedPositionSize,
+      marketContext,
+      confidence: Math.min(85, 50 + (trendStrength * 30) + (volumeRatio > 1 ? 10 : 0)),
+      reasoning: `${profile.toUpperCase()}: Entry at $${entryPrice.toFixed(2)} based on ${historical.currentTrend} (${(trendStrength*100).toFixed(0)}% strength), RSI ${rsi.toFixed(0)}, volatility ${(avgVolatility*100).toFixed(1)}%${marketContext}`
+    }
+  }
+
   const generateOCORecommendation = async (symbol: string, quote: any) => {
     // Simulate AI-powered OCO analysis
     const price = quote?.currentPrice || 100
@@ -448,77 +566,398 @@ export default function EnhancedWatchlistCards({
             </div>
           </div>
 
-          {/* OCO Recommendation */}
+          {/* Enhanced OCO Recommendation Section */}
           <div style={{
-            backgroundColor: '#F8F9FA',
-            borderRadius: '12px',
-            padding: '12px',
-            marginBottom: '1rem'
+            background: 'linear-gradient(135deg, #F8F9FA 0%, #E8F4FD 100%)',
+            borderRadius: '16px',
+            padding: '16px',
+            marginBottom: '1rem',
+            border: '2px solid',
+            borderColor: stock.ocoRecommendation.action === 'BUY' ? '#34C759' : 
+                        stock.ocoRecommendation.action === 'SELL' ? '#FF3B30' : '#8E8E93'
           }}>
+            {/* Header with Action & Confidence */}
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              marginBottom: '8px'
+              marginBottom: '12px'
             }}>
-              <span style={{
-                backgroundColor: getActionColor(stock.ocoRecommendation.action),
-                color: 'white',
-                padding: '4px 8px',
-                borderRadius: '6px',
-                fontSize: '12px',
-                fontWeight: '600'
-              }}>
-                {stock.ocoRecommendation.action}
-              </span>
-              <div style={{ textAlign: 'right' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <span style={{
+                  backgroundColor: getActionColor(stock.ocoRecommendation.action),
+                  color: 'white',
+                  padding: '8px 16px',
+                  borderRadius: '12px',
                   fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#1D1D1F'
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
                 }}>
-                  {stock.ocoRecommendation.confidence}% confidence
+                  🎯 {stock.ocoRecommendation.action} Signal
                 </span>
-                <div style={{ fontSize: '10px', color: '#8E8E93' }}>
-                  Swing Score: {stock.historicalAnalysis.swingTradingScore}/100
+                <div style={{
+                  backgroundColor: 'rgba(0, 122, 255, 0.1)',
+                  color: '#007AFF',
+                  padding: '4px 8px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  fontWeight: '600'
+                }}>
+                  {stock.ocoRecommendation.confidence}% Confidence
                 </div>
               </div>
+              <div style={{
+                backgroundColor: 'rgba(0, 0, 0, 0.05)',
+                padding: '4px 8px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                color: '#6E6E73'
+              }}>
+                Score: {stock.historicalAnalysis.swingTradingScore}/100
+              </div>
             </div>
-            <div style={{ fontSize: '12px', color: '#6E6E73', marginBottom: '8px' }}>
-              {stock.ocoRecommendation.reasoning}
+
+            {/* AI Reasoning */}
+            <div style={{ 
+              fontSize: '13px', 
+              color: '#1D1D1F', 
+              marginBottom: '16px',
+              lineHeight: '1.4',
+              fontWeight: '500'
+            }}>
+              💡 <strong>AI Analysis:</strong> {stock.ocoRecommendation.reasoning}
               {stock.historicalAnalysis.market.session !== 'OPEN' && (
-                <span style={{ color: '#8E8E93' }}> • Session: {stock.historicalAnalysis.market.session.replace('_', ' ')} — consider placing alerts or waiting for regular hours.</span>
+                <div style={{ 
+                  marginTop: '8px', 
+                  color: '#FF9500', 
+                  fontSize: '12px',
+                  padding: '8px',
+                  backgroundColor: 'rgba(255, 149, 0, 0.1)',
+                  borderRadius: '8px'
+                }}>
+                  ⏰ <strong>Market Closed:</strong> {stock.historicalAnalysis.market.session.replace('_', ' ')} — Consider placing alerts or waiting for regular hours.
+                </div>
               )}
             </div>
+
+            {/* OCO Order Levels */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr 1fr',
-              gap: '8px',
-              fontSize: '11px'
+              gap: '12px',
+              marginBottom: '16px'
             }}>
-              <div>
-                <div style={{ color: '#8E8E93' }}>Entry</div>
-                <div style={{ fontWeight: '600' }}>${stock.ocoRecommendation.entryPrice}</div>
+              <div style={{
+                backgroundColor: 'white',
+                padding: '12px',
+                borderRadius: '12px',
+                textAlign: 'center',
+                border: '1px solid #E5E5E7'
+              }}>
+                <div style={{ 
+                  fontSize: '11px', 
+                  color: '#8E8E93', 
+                  fontWeight: '600',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  marginBottom: '4px'
+                }}>
+                  📈 Entry
+                </div>
+                <div style={{ 
+                  fontSize: '16px', 
+                  fontWeight: '700',
+                  color: '#007AFF'
+                }}>
+                  ${stock.ocoRecommendation.entryPrice.toFixed(2)}
+                </div>
               </div>
-              <div>
-                <div style={{ color: '#8E8E93' }}>Stop</div>
-                <div style={{ fontWeight: '600', color: '#FF3B30' }}>${stock.ocoRecommendation.stopLoss}</div>
+              <div style={{
+                backgroundColor: 'white',
+                padding: '12px',
+                borderRadius: '12px',
+                textAlign: 'center',
+                border: '1px solid #E5E5E7'
+              }}>
+                <div style={{ 
+                  fontSize: '11px', 
+                  color: '#8E8E93', 
+                  fontWeight: '600',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  marginBottom: '4px'
+                }}>
+                  🛡️ Stop
+                </div>
+                <div style={{ 
+                  fontSize: '16px', 
+                  fontWeight: '700',
+                  color: '#FF3B30'
+                }}>
+                  ${stock.ocoRecommendation.stopLoss.toFixed(2)}
+                </div>
               </div>
-              <div>
-                <div style={{ color: '#8E8E93' }}>Target</div>
-                <div style={{ fontWeight: '600', color: '#34C759' }}>${stock.ocoRecommendation.takeProfit}</div>
+              <div style={{
+                backgroundColor: 'white',
+                padding: '12px',
+                borderRadius: '12px',
+                textAlign: 'center',
+                border: '1px solid #E5E5E7'
+              }}>
+                <div style={{ 
+                  fontSize: '11px', 
+                  color: '#8E8E93', 
+                  fontWeight: '600',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  marginBottom: '4px'
+                }}>
+                  🎯 Target
+                </div>
+                <div style={{ 
+                  fontSize: '16px', 
+                  fontWeight: '700',
+                  color: '#34C759'
+                }}>
+                  ${stock.ocoRecommendation.takeProfit.toFixed(2)}
+                </div>
               </div>
             </div>
+
+            {/* Quick Action Buttons */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '8px',
+              marginBottom: '12px'
+            }}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  // Set alert for entry price
+                  onSetAlert(
+                    stock.symbol, 
+                    stock.ocoRecommendation.entryPrice,
+                    stock.ocoRecommendation.entryPrice > stock.currentPrice ? 'above' : 'below'
+                  )
+                }}
+                style={{
+                  padding: '8px 12px',
+                  backgroundColor: '#007AFF',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                🔔 Set Entry Alert
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  // Copy OCO order details to clipboard
+                  const ocoText = `${stock.symbol} OCO Order:\nEntry: $${stock.ocoRecommendation.entryPrice.toFixed(2)}\nStop: $${stock.ocoRecommendation.stopLoss.toFixed(2)}\nTarget: $${stock.ocoRecommendation.takeProfit.toFixed(2)}\nConfidence: ${stock.ocoRecommendation.confidence}%`
+                  navigator.clipboard.writeText(ocoText)
+                  alert('📋 OCO order details copied to clipboard!')
+                }}
+                style={{
+                  padding: '8px 12px',
+                  backgroundColor: 'white',
+                  color: '#007AFF',
+                  border: '1px solid #007AFF',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                📋 Copy OCO
+              </button>
+            </div>
+
             {/* Historical Context */}
             <div style={{
-              marginTop: '8px',
-              padding: '6px',
-              backgroundColor: '#E8F4FD',
-              borderRadius: '6px',
-              fontSize: '10px',
-              color: '#1565C0'
+              padding: '10px 12px',
+              backgroundColor: 'rgba(21, 101, 192, 0.1)',
+              borderRadius: '8px',
+              fontSize: '11px',
+              color: '#1565C0',
+              fontWeight: '500'
             }}>
-              📊 Historical: Avg swing {stock.historicalAnalysis.historicalPatterns.avgSwingMagnitude}% over {stock.historicalAnalysis.historicalPatterns.avgSwingDuration} days | Success rate: {stock.historicalAnalysis.historicalPatterns.successRate}%
+              📊 <strong>Historical Performance:</strong> Avg swing {stock.historicalAnalysis.historicalPatterns.avgSwingMagnitude}% over {stock.historicalAnalysis.historicalPatterns.avgSwingDuration} days | Success rate: {stock.historicalAnalysis.historicalPatterns.successRate}%
+            </div>
+          </div>
+
+          {/* OCO Risk Profile Options */}
+          <div style={{
+            backgroundColor: '#F8F9FA',
+            borderRadius: '16px',
+            padding: '16px',
+            marginBottom: '1rem',
+            border: '1px solid #E5E5E7'
+          }}>
+            <div style={{
+              fontSize: '14px',
+              fontWeight: '600',
+              color: '#1D1D1F',
+              marginBottom: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              🎯 <span>OCO Trading Strategies</span>
+            </div>
+            
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr 1fr',
+              gap: '8px'
+            }}>
+              {/* Conservative OCO */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  const conservativeOCO = generateOCOByRiskProfile(stock, 'conservative')
+                  const ocoText = `${stock.symbol} CONSERVATIVE OCO (AI-Generated):
+Entry: $${conservativeOCO.entry.toFixed(2)}
+Stop: $${conservativeOCO.stop.toFixed(2)}
+Target: $${conservativeOCO.target.toFixed(2)}
+Risk/Reward: ${conservativeOCO.riskReward.toFixed(2)}:1
+Position: ${conservativeOCO.positionSize}
+Confidence: ${conservativeOCO.confidence}%
+
+AI Analysis: ${conservativeOCO.reasoning}`
+                  navigator.clipboard.writeText(ocoText)
+                  alert('📋 AI Conservative OCO copied to clipboard!')
+                }}
+                style={{
+                  padding: '12px 8px',
+                  backgroundColor: 'white',
+                  border: '2px solid #34C759',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'center'
+                }}
+              >
+                <div style={{ fontSize: '12px', fontWeight: '700', color: '#34C759', marginBottom: '4px' }}>
+                  🛡️ CONSERVATIVE
+                </div>
+                <div style={{ fontSize: '10px', color: '#6E6E73', marginBottom: '6px' }}>
+                  AI-powered • Low risk
+                </div>
+                <div style={{ fontSize: '9px', color: '#8E8E93' }}>
+                  Entry: ${generateOCOByRiskProfile(stock, 'conservative').entry.toFixed(2)}<br/>
+                  Stop: ${generateOCOByRiskProfile(stock, 'conservative').stop.toFixed(2)}<br/>
+                  Target: ${generateOCOByRiskProfile(stock, 'conservative').target.toFixed(2)}
+                </div>
+                <div style={{ fontSize: '8px', color: '#34C759', marginTop: '4px', fontWeight: '600' }}>
+                  R/R: {generateOCOByRiskProfile(stock, 'conservative').riskReward.toFixed(1)}:1
+                </div>
+              </button>
+
+              {/* Moderate OCO */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  const moderateOCO = generateOCOByRiskProfile(stock, 'moderate')
+                  const ocoText = `${stock.symbol} MODERATE OCO (AI-Generated):
+Entry: $${moderateOCO.entry.toFixed(2)}
+Stop: $${moderateOCO.stop.toFixed(2)}
+Target: $${moderateOCO.target.toFixed(2)}
+Risk/Reward: ${moderateOCO.riskReward.toFixed(2)}:1
+Position: ${moderateOCO.positionSize}
+Confidence: ${moderateOCO.confidence}%
+
+AI Analysis: ${moderateOCO.reasoning}`
+                  navigator.clipboard.writeText(ocoText)
+                  alert('📋 AI Moderate OCO copied to clipboard!')
+                }}
+                style={{
+                  padding: '12px 8px',
+                  backgroundColor: 'white',
+                  border: '2px solid #007AFF',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'center'
+                }}
+              >
+                <div style={{ fontSize: '12px', fontWeight: '700', color: '#007AFF', marginBottom: '4px' }}>
+                  ⚖️ MODERATE
+                </div>
+                <div style={{ fontSize: '10px', color: '#6E6E73', marginBottom: '6px' }}>
+                  AI-balanced • Medium risk
+                </div>
+                <div style={{ fontSize: '9px', color: '#8E8E93' }}>
+                  Entry: ${generateOCOByRiskProfile(stock, 'moderate').entry.toFixed(2)}<br/>
+                  Stop: ${generateOCOByRiskProfile(stock, 'moderate').stop.toFixed(2)}<br/>
+                  Target: ${generateOCOByRiskProfile(stock, 'moderate').target.toFixed(2)}
+                </div>
+                <div style={{ fontSize: '8px', color: '#007AFF', marginTop: '4px', fontWeight: '600' }}>
+                  R/R: {generateOCOByRiskProfile(stock, 'moderate').riskReward.toFixed(1)}:1
+                </div>
+              </button>
+
+              {/* Aggressive OCO */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  const aggressiveOCO = generateOCOByRiskProfile(stock, 'aggressive')
+                  const ocoText = `${stock.symbol} AGGRESSIVE OCO (AI-Generated):
+Entry: $${aggressiveOCO.entry.toFixed(2)}
+Stop: $${aggressiveOCO.stop.toFixed(2)}
+Target: $${aggressiveOCO.target.toFixed(2)}
+Risk/Reward: ${aggressiveOCO.riskReward.toFixed(2)}:1
+Position: ${aggressiveOCO.positionSize}
+Confidence: ${aggressiveOCO.confidence}%
+
+AI Analysis: ${aggressiveOCO.reasoning}`
+                  navigator.clipboard.writeText(ocoText)
+                  alert('📋 AI Aggressive OCO copied to clipboard!')
+                }}
+                style={{
+                  padding: '12px 8px',
+                  backgroundColor: 'white',
+                  border: '2px solid #FF3B30',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'center'
+                }}
+              >
+                <div style={{ fontSize: '12px', fontWeight: '700', color: '#FF3B30', marginBottom: '4px' }}>
+                  🚀 AGGRESSIVE
+                </div>
+                <div style={{ fontSize: '10px', color: '#6E6E73', marginBottom: '6px' }}>
+                  AI-optimized • Higher risk
+                </div>
+                <div style={{ fontSize: '9px', color: '#8E8E93' }}>
+                  Entry: ${generateOCOByRiskProfile(stock, 'aggressive').entry.toFixed(2)}<br/>
+                  Stop: ${generateOCOByRiskProfile(stock, 'aggressive').stop.toFixed(2)}<br/>
+                  Target: ${generateOCOByRiskProfile(stock, 'aggressive').target.toFixed(2)}
+                </div>
+                <div style={{ fontSize: '8px', color: '#FF3B30', marginTop: '4px', fontWeight: '600' }}>
+                  R/R: {generateOCOByRiskProfile(stock, 'aggressive').riskReward.toFixed(1)}:1
+                </div>
+              </button>
+            </div>
+
+            <div style={{
+              marginTop: '12px',
+              padding: '8px',
+              backgroundColor: 'rgba(0, 122, 255, 0.05)',
+              borderRadius: '8px',
+              fontSize: '10px',
+              color: '#6E6E73',
+              textAlign: 'center'
+            }}>
+              🤖 AI analyzes RSI, moving averages, volatility, trend strength & volume to generate dynamic OCO levels
             </div>
           </div>
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { addToWatchlist, removeFromWatchlist, getUserWatchlist } from '../lib/supabase'
 import { marketDataService } from '../lib/market-data'
+import StockAutocomplete from './StockAutocomplete'
 
 interface WatchlistManagerProps {
   userId: string
@@ -15,8 +16,6 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
   watchlist, 
   onWatchlistUpdate 
 }) => {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [loadingPrices, setLoadingPrices] = useState(false)
   const [watchlistWithPrices, setWatchlistWithPrices] = useState<any[]>([])
@@ -51,39 +50,9 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
     }
   }
 
-  const searchStocks = async (query: string) => {
-    if (!query.trim()) {
-      setSearchResults([])
-      return
-    }
-
-    setLoading(true)
+  const addStock = async (symbol: string, stockData?: any) => {
     try {
-      console.log('Searching for stocks:', query)
-      const results = await marketDataService.searchSymbols(query)
-      console.log('Search results:', results)
-      setSearchResults(results.slice(0, 5)) // Limit to 5 results
-    } catch (error) {
-      console.error('Error searching stocks:', error)
-      // Provide fallback search results for testing
-      const mockResults = [
-        { symbol: query.toUpperCase(), description: `${query.toUpperCase()} - Stock`, type: 'Common Stock' },
-        { symbol: 'AAPL', description: 'Apple Inc', type: 'Common Stock' },
-        { symbol: 'TSLA', description: 'Tesla Inc', type: 'Common Stock' },
-        { symbol: 'GOOGL', description: 'Alphabet Inc', type: 'Common Stock' },
-        { symbol: 'MSFT', description: 'Microsoft Corporation', type: 'Common Stock' }
-      ].filter(item => item.symbol.includes(query.toUpperCase()))
-      
-      console.log('Using fallback results:', mockResults)
-      setSearchResults(mockResults.slice(0, 5))
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const addStock = async (symbol: string) => {
-    try {
-      console.log('Adding stock to watchlist:', { userId, symbol })
+      console.log('Adding stock to watchlist:', { userId, symbol, stockData })
       
       // Check if stock is already in watchlist
       const isAlreadyAdded = watchlist.some(item => item.symbol === symbol)
@@ -101,10 +70,11 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
         return
       }
       
-      setSearchQuery('')
-      setSearchResults([])
       onWatchlistUpdate()
-      alert(`✅ ${symbol} added to your watchlist!`)
+      
+      // Show success message with company name if available
+      const displayName = stockData?.name ? `${symbol} (${stockData.name})` : symbol
+      alert(`✅ ${displayName} added to your watchlist!`)
       console.log('Stock added successfully!')
     } catch (error) {
       console.error('Error adding stock to watchlist:', error)
@@ -180,70 +150,18 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
           ➕ Add New Stock
         </h3>
         
-        <div style={{ position: 'relative' }}>
-          <input
-            type="text"
-            placeholder="Search for stocks (e.g., AAPL, TSLA, GOOGL)..."
-            value={searchQuery}
-            data-action="add-stock-input"
-            onChange={(e) => {
-              setSearchQuery(e.target.value)
-              searchStocks(e.target.value)
-            }}
-            style={{
-              width: '100%',
-              padding: '0.75rem 1rem',
-              backgroundColor: 'white',
-              border: '1px solid #D1D1D6',
-              borderRadius: '8px',
-              fontSize: '16px',
-              outline: 'none'
-            }}
-          />
-          
-          {loading && (
-            <div style={{
-              position: 'absolute',
-              right: '1rem',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: '#8e8e93'
-            }}>
-              Searching...
-            </div>
-          )}
+        <StockAutocomplete
+          onSelect={addStock}
+          placeholder="Search for stocks (e.g., GLXY, AAPL, TSLA)..."
+        />
+        
+        <div style={{
+          marginTop: '0.75rem',
+          fontSize: '14px',
+          color: '#86868B'
+        }}>
+          💡 Type at least 3 letters to see matching stocks. For GLXY, you'll see Galaxy Digital options.
         </div>
-
-        {/* Search Results */}
-        {searchResults.length > 0 && (
-          <div style={{
-            backgroundColor: 'white',
-            border: '1px solid #D1D1D6',
-            borderRadius: '8px',
-            marginTop: '0.5rem',
-            overflow: 'hidden'
-          }}>
-            {searchResults.map((result, index) => (
-              <div
-                key={index}
-                onClick={() => addStock(result.symbol)}
-                style={{
-                  padding: '0.75rem',
-                  borderBottom: index < searchResults.length - 1 ? '1px solid #F2F2F7' : 'none',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s ease'
-                }}
-              >
-                <div style={{ fontWeight: '600', color: '#1d1d1f' }}>
-                  {result.symbol}
-                </div>
-                <div style={{ fontSize: '14px', color: '#8e8e93' }}>
-                  {result.description}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Watchlist Items */}

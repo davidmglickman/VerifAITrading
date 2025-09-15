@@ -34,30 +34,57 @@ export default function OCOSettings({ holdings, watchlistSymbols }: OCOSettingsP
     try {
       const holding = holdings.find(h => h.symbol === symbol)
       
+      // Use default values for missing parameters
+      const currentPrice = holding?.currentPrice || 50 // Default price
+      const accountSize = 50000 // Default account size
+      const riskTolerance = 2 // Default 2% risk
+      
+      console.log('Generating OCO for:', { symbol, currentPrice, accountSize, riskTolerance })
+      
       const response = await fetch('/api/ai/oco-recommendation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           symbol,
-          entryPrice: holding?.entryPrice,
-          currentPrice: holding?.currentPrice,
-          shares: holding?.shares,
-          analysisType: holding ? 'exit_strategy' : 'entry_strategy'
+          currentPrice,
+          accountSize,
+          riskTolerance
         })
       })
 
+      console.log('OCO API response status:', response.status)
+
       if (!response.ok) {
-        throw new Error('Failed to generate OCO recommendation')
+        const errorData = await response.json()
+        console.error('OCO API error:', errorData)
+        throw new Error(errorData.error || 'Failed to generate OCO recommendation')
       }
 
       const result = await response.json()
+      console.log('OCO API result:', result)
+      
+      // Map the API response to our component format
+      const ocoOrder: OCOOrder = {
+        symbol: result.symbol,
+        currentPrice: result.currentPrice,
+        profitTarget: result.profitTarget,
+        stopLoss: result.stopLoss,
+        riskReward: result.riskRewardRatio,
+        confidence: result.confidence,
+        reasoning: result.reasoning,
+        timeHorizon: result.timeframe
+      }
+      
       setOcoRecommendations(prev => ({
         ...prev,
-        [symbol]: result.data
+        [symbol]: ocoOrder
       }))
+      
+      console.log('OCO recommendation generated successfully for', symbol)
     } catch (error) {
       console.error('Error generating OCO:', error)
-      alert('Failed to generate OCO settings. Please try again.')
+      const errorMessage = error instanceof Error ? error.message : 'Please try again.'
+      alert(`Failed to generate OCO settings for ${symbol}. ${errorMessage}`)
     } finally {
       setLoading(false)
     }
