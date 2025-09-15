@@ -198,9 +198,9 @@ class AIStockAnalysisService {
     // Fallback technical analysis
     const priceMovement = Math.abs(quote.changePercent)
     return {
-      trend: quote.changePercent > 1 ? 'BULLISH' : quote.changePercent < -1 ? 'BEARISH' : 'NEUTRAL',
-      momentum: priceMovement > 3 ? 'STRONG' : priceMovement > 1 ? 'MODERATE' : 'WEAK',
-      volatility: priceMovement > 5 ? 'HIGH' : priceMovement > 2 ? 'MEDIUM' : 'LOW',
+      trend: (quote.changePercent > 1 ? 'BULLISH' : quote.changePercent < -1 ? 'BEARISH' : 'NEUTRAL') as 'BULLISH' | 'BEARISH' | 'NEUTRAL',
+      momentum: (priceMovement > 3 ? 'STRONG' : priceMovement > 1 ? 'MODERATE' : 'WEAK') as 'STRONG' | 'MODERATE' | 'WEAK',
+      volatility: (priceMovement > 5 ? 'HIGH' : priceMovement > 2 ? 'MEDIUM' : 'LOW') as 'HIGH' | 'MEDIUM' | 'LOW',
       support: quote.currentPrice * 0.95,
       resistance: quote.currentPrice * 1.05
     }
