@@ -380,8 +380,7 @@ class AIStockAnalysisService {
       'NVDA': { base: 450, range: [440, 460] },
       'META': { base: 320, range: [310, 330] },
       'NFLX': { base: 430, range: [420, 440] },
-      'GLXY': { base: 30, range: [28, 32] },
-      'GRGG': { base: 145, range: [140, 150] }
+      'GLXY': { base: 30, range: [28, 32] }
     }
     
     const stockInfo = stockPrices[symbol] || { base: 100, range: [95, 105] }

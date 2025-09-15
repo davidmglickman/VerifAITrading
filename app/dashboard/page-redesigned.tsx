@@ -18,8 +18,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [activeView, setActiveView] = useState('overview')
   const [watchlist, setWatchlist] = useState<any[]>([
-    { id: 'default-1', symbol: 'GLXY', added_at: new Date().toISOString() },
-    { id: 'default-2', symbol: 'GRGG', added_at: new Date().toISOString() }
+    { id: 'default-1', symbol: 'GLXY', added_at: new Date().toISOString() }
   ])
 
   useEffect(() => {

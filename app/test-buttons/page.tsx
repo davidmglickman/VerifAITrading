@@ -6,8 +6,7 @@ import AITradingCoach from '../../components/AITradingCoach'
 
 export default function ButtonTestPage() {
   const [mockWatchlist, setMockWatchlist] = useState([
-    { id: '1', symbol: 'GLXY', added_at: new Date().toISOString() },
-    { id: '2', symbol: 'GRGG', added_at: new Date().toISOString() }
+    { id: '1', symbol: 'GLXY', added_at: new Date().toISOString() }
   ])
 
   const mockUserId = 'test-user-123'

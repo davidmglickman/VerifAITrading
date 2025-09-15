@@ -78,8 +78,7 @@ export default function EnhancedWatchlistCards({
       'NVDA': 'NVIDIA Corporation',
       'META': 'Meta Platforms Inc.',
       'NFLX': 'Netflix Inc.',
-      'GLXY': 'Galaxy Digital Holdings Ltd.',
-      'GRGG': 'Garmin Ltd.'
+      'GLXY': 'Galaxy Digital Holdings Ltd.'
     }
     
     return companyNames[symbol] || `${symbol} Corp.`

@@ -25,8 +25,7 @@ export default function DashboardPage() {
   const aiCoachRef = useRef<any>(null)
   const watchlistRef = useRef<any>(null)
   const [watchlist, setWatchlist] = useState<any[]>([
-    { id: 'default-1', symbol: 'GLXY', added_at: new Date().toISOString() },
-    { id: 'default-2', symbol: 'GRGG', added_at: new Date().toISOString() }
+    { id: 'default-1', symbol: 'GLXY', added_at: new Date().toISOString() }
   ])
 
   const updateWatchlist = async () => {
