@@ -38,6 +38,23 @@ export default function DashboardPage() {
     }
   }
 
+  const addToWatchlistLocal = async (symbol: string) => {
+    try {
+      console.log('Adding stock to local watchlist:', symbol)
+      const newId = `demo-${Date.now()}`
+      const newItem = { 
+        id: newId, 
+        symbol: symbol.toUpperCase(), 
+        added_at: new Date().toISOString() 
+      }
+      setWatchlist(current => [...current, newItem])
+      return { data: newItem, error: null }
+    } catch (error) {
+      console.error('Error adding to local watchlist:', error)
+      return { data: null, error }
+    }
+  }
+
   const removeFromWatchlistLocal = async (id: string) => {
     try {
       console.log('Removing stock with ID:', id)
@@ -593,6 +610,7 @@ function WatchlistContent({
           watchlist={watchlist} 
           onWatchlistUpdate={updateWatchlist}
           removeFromWatchlistLocal={removeFromWatchlistLocal}
+          addToWatchlistLocal={addToWatchlistLocal}
         />
       </div>
     </div>

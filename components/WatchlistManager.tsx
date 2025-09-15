@@ -10,13 +10,15 @@ interface WatchlistManagerProps {
   watchlist: Array<{ id: string; symbol: string; added_at: string }>
   onWatchlistUpdate: () => void
   removeFromWatchlistLocal?: (id: string) => Promise<{error: any}>
+  addToWatchlistLocal?: (symbol: string) => Promise<{data: any, error: any}>
 }
 
 const WatchlistManager: React.FC<WatchlistManagerProps> = ({ 
   userId, 
   watchlist, 
   onWatchlistUpdate,
-  removeFromWatchlistLocal
+  removeFromWatchlistLocal,
+  addToWatchlistLocal
 }) => {
   const [loading, setLoading] = useState(false)
   const [loadingPrices, setLoadingPrices] = useState(false)
@@ -63,16 +65,30 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
         return
       }
       
-      const { data, error } = await addToWatchlist(userId, symbol)
-      console.log('Add to watchlist result:', { data, error })
+      // Use local function if available (for demo), otherwise use database
+      let data, error
+      if (addToWatchlistLocal) {
+        const result = await addToWatchlistLocal(symbol)
+        data = result.data
+        error = result.error
+        console.log('Added to local watchlist:', { data, error })
+      } else {
+        const result = await addToWatchlist(userId, symbol)
+        data = result.data
+        error = result.error
+        console.log('Added to database watchlist:', { data, error })
+      }
       
       if (error) {
-        console.error('Database error:', error)
-        alert(`Failed to add ${symbol} to watchlist: ${error.message}`)
+        console.error('Add to watchlist error:', error)
+        alert(`Failed to add ${symbol} to watchlist: ${error.message || error}`)
         return
       }
       
-      onWatchlistUpdate()
+      // Only call onWatchlistUpdate if using database (local updates happen automatically)
+      if (!addToWatchlistLocal) {
+        onWatchlistUpdate()
+      }
       
       // Show success message with company name if available
       const displayName = stockData?.name ? `${symbol} (${stockData.name})` : symbol
