@@ -84,8 +84,19 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
 
   const removeStock = async (watchlistId: string) => {
     try {
-      await removeFromWatchlist(watchlistId)
+      console.log('Attempting to remove stock with ID:', watchlistId)
+      const result = await removeFromWatchlist(watchlistId)
+      console.log('Remove result:', result)
+      
+      if (result.error) {
+        console.error('Database error removing stock:', result.error)
+        alert(`Failed to remove stock: ${result.error.message}`)
+        return
+      }
+      
+      console.log('Stock removed successfully, updating watchlist...')
       onWatchlistUpdate()
+      alert('✅ Stock removed from watchlist!')
     } catch (error) {
       console.error('Error removing stock from watchlist:', error)
       alert('Failed to remove stock from watchlist')
@@ -268,7 +279,10 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
               
               <div style={{ marginLeft: '1rem' }}>
                 <button
-                  onClick={() => removeStock(stock.id)}
+                  onClick={() => {
+                    console.log('Delete button clicked for stock:', stock.symbol, 'ID:', stock.id)
+                    removeStock(stock.id)
+                  }}
                   style={{
                     padding: '0.5rem',
                     backgroundColor: 'rgba(255, 59, 48, 0.1)',

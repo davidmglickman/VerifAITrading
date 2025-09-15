@@ -173,11 +173,13 @@ export const addToWatchlist = async (userId: string, symbol: string, targetPrice
 }
 
 export const removeFromWatchlist = async (id: string) => {
+  console.log('removeFromWatchlist called with ID:', id)
   const { error } = await supabase
     .from('user_watchlist')
     .delete()
     .eq('id', id)
 
+  console.log('removeFromWatchlist result:', { error })
   return { error }
 }
 
