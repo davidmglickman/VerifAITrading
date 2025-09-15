@@ -9,12 +9,14 @@ interface WatchlistManagerProps {
   userId: string
   watchlist: Array<{ id: string; symbol: string; added_at: string }>
   onWatchlistUpdate: () => void
+  removeFromWatchlistLocal?: (id: string) => Promise<{error: any}>
 }
 
 const WatchlistManager: React.FC<WatchlistManagerProps> = ({ 
   userId, 
   watchlist, 
-  onWatchlistUpdate 
+  onWatchlistUpdate,
+  removeFromWatchlistLocal
 }) => {
   const [loading, setLoading] = useState(false)
   const [loadingPrices, setLoadingPrices] = useState(false)
@@ -85,7 +87,16 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
   const removeStock = async (watchlistId: string) => {
     try {
       console.log('Attempting to remove stock with ID:', watchlistId)
-      const result = await removeFromWatchlist(watchlistId)
+      
+      let result
+      if (removeFromWatchlistLocal) {
+        // Use local state management for demo
+        result = await removeFromWatchlistLocal(watchlistId)
+      } else {
+        // Use database for production
+        result = await removeFromWatchlist(watchlistId)
+      }
+      
       console.log('Remove result:', result)
       
       if (result.error) {
@@ -95,7 +106,10 @@ const WatchlistManager: React.FC<WatchlistManagerProps> = ({
       }
       
       console.log('Stock removed successfully, updating watchlist...')
-      onWatchlistUpdate()
+      if (!removeFromWatchlistLocal) {
+        // Only call onWatchlistUpdate if using database
+        onWatchlistUpdate()
+      }
       alert('✅ Stock removed from watchlist!')
     } catch (error) {
       console.error('Error removing stock from watchlist:', error)

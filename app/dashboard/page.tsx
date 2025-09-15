@@ -29,6 +29,27 @@ export default function DashboardPage() {
     { id: 'default-2', symbol: 'GRGG', added_at: new Date().toISOString() }
   ])
 
+  const updateWatchlist = async () => {
+    try {
+      console.log('Watchlist update requested - this is a demo with hardcoded data')
+      // Since we're using hardcoded data, just trigger a re-render
+      setWatchlist(current => [...current])
+    } catch (error) {
+      console.error('Error updating watchlist:', error)
+    }
+  }
+
+  const removeFromWatchlistLocal = async (id: string) => {
+    try {
+      console.log('Removing stock with ID:', id)
+      setWatchlist(current => current.filter(item => item.id !== id))
+      return { error: null }
+    } catch (error) {
+      console.error('Error removing from local watchlist:', error)
+      return { error }
+    }
+  }
+
   useEffect(() => {
     checkUser()
   }, [])
@@ -237,7 +258,7 @@ export default function DashboardPage() {
         {/* Content Area */}
         <div style={{ minHeight: '500px' }}>
           {activeView === 'overview' && <OverviewContent watchlist={watchlist} />}
-          {activeView === 'watchlist' && <WatchlistContent watchlist={watchlist} setWatchlist={setWatchlist} onStockClick={handleStockClick} onSetAlert={handleSetAlert} />}
+          {activeView === 'watchlist' && <WatchlistContent watchlist={watchlist} setWatchlist={setWatchlist} onStockClick={handleStockClick} onSetAlert={handleSetAlert} updateWatchlist={updateWatchlist} removeFromWatchlistLocal={removeFromWatchlistLocal} />}
           {activeView === 'ai-coach' && <AICoachContent watchlist={watchlist} />}
           {activeView === 'analysis' && <AnalysisContent watchlist={watchlist} />}
           {activeView === 'alerts' && <AlertsContent />}
@@ -442,12 +463,16 @@ function WatchlistContent({
   watchlist, 
   setWatchlist, 
   onStockClick, 
-  onSetAlert 
+  onSetAlert,
+  updateWatchlist,
+  removeFromWatchlistLocal
 }: { 
   watchlist: any[]
   setWatchlist: (list: any[]) => void
   onStockClick: (symbol: string) => void
   onSetAlert: (symbol: string, price: number, type: 'above' | 'below') => void
+  updateWatchlist: () => Promise<void>
+  removeFromWatchlistLocal: (id: string) => Promise<{error: any}>
 }) {
   const [holdings, setHoldings] = useState<any[]>([])
 
@@ -554,7 +579,12 @@ function WatchlistContent({
         }}>
           ⚙️ Watchlist Management
         </h3>
-        <WatchlistManager userId="default-user" watchlist={watchlist} onWatchlistUpdate={() => {}} />
+        <WatchlistManager 
+          userId="default-user" 
+          watchlist={watchlist} 
+          onWatchlistUpdate={updateWatchlist}
+          removeFromWatchlistLocal={removeFromWatchlistLocal}
+        />
       </div>
     </div>
   )
