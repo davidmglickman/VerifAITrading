@@ -29,6 +29,12 @@ const AITradingCoach: React.FC<AITradingCoachProps> = ({ userWatchlist }) => {
     setLoading(true)
     setInsights('🤖 Analyzing your watchlist...')
     
+    // Add timeout protection
+    const timeoutId = setTimeout(() => {
+      setLoading(false)
+      setInsights('⏰ Analysis timed out. Please try again with fewer stocks or check your connection.')
+    }, 30000) // 30 second timeout
+    
     try {
       const symbols = userWatchlist.map(item => item.symbol)
       console.log('Generating insights for symbols:', symbols)
@@ -39,39 +45,54 @@ const AITradingCoach: React.FC<AITradingCoachProps> = ({ userWatchlist }) => {
       let companyProfiles: Record<string, any> = {}
       
       try {
-        // Get real-time quotes
-        const quotes = await marketDataService.getMultipleQuotes(symbols.slice(0, 5))
-        console.log('Market quotes received:', quotes)
+        // Get real-time quotes with better error handling
+        console.log('Fetching market data for symbols:', symbols)
         
-        // Get company profiles and news for each stock
-        for (const symbol of symbols.slice(0, 3)) { // Limit to avoid API rate limits
+        // Fetch quotes one by one to handle individual failures
+        for (const symbol of symbols.slice(0, 5)) {
+          try {
+            const quote = await marketDataService.getStockQuote(symbol)
+            marketData[symbol] = {
+              price: quote.currentPrice,
+              change: quote.change,
+              changePercent: quote.changePercent,
+              volume: quote.volume,
+              high: quote.high,
+              low: quote.low,
+              open: quote.open,
+              previousClose: quote.previousClose
+            }
+            console.log(`✅ Got real data for ${symbol}:`, marketData[symbol])
+          } catch (quoteError) {
+            console.warn(`❌ Failed to get real data for ${symbol}, using fallback:`, quoteError)
+            // Use fallback data
+            const fallback = await marketDataService.getQuoteFromYahoo(symbol)
+            marketData[symbol] = {
+              price: fallback.currentPrice || 50 + Math.random() * 100,
+              change: fallback.change || (Math.random() - 0.5) * 10,
+              changePercent: fallback.changePercent || (Math.random() - 0.5) * 10,
+              volume: fallback.volume || Math.floor(Math.random() * 1000000),
+              note: 'Fallback data - real market data unavailable'
+            }
+          }
+        }
+        
+        // Get company profiles and news for a subset to avoid rate limits
+        for (const symbol of symbols.slice(0, 2)) {
           try {
             const [profile, news] = await Promise.all([
-              marketDataService.getCompanyProfile(symbol),
-              marketDataService.getStockNews(symbol)
+              marketDataService.getCompanyProfile(symbol).catch(() => null),
+              marketDataService.getStockNews(symbol).catch(() => [])
             ])
-            companyProfiles[symbol] = profile
-            newsData[symbol] = news.slice(0, 3) // Top 3 news items
+            if (profile) companyProfiles[symbol] = profile
+            if (news && news.length > 0) newsData[symbol] = news.slice(0, 2)
           } catch (error) {
             console.warn(`Failed to get additional data for ${symbol}:`, error)
           }
         }
         
-        marketData = quotes.reduce((acc, quote) => {
-          acc[quote.symbol] = {
-            price: quote.currentPrice,
-            change: quote.change,
-            changePercent: quote.changePercent,
-            volume: quote.volume,
-            high: quote.high,
-            low: quote.low,
-            open: quote.open,
-            previousClose: quote.previousClose
-          }
-          return acc
-        }, {} as Record<string, any>)
       } catch (marketError) {
-        console.warn('Market data unavailable, using fallback data:', marketError)
+        console.warn('Market data service error, using fallback for all symbols:', marketError)
         // Provide fallback market data so AI can still generate insights
         marketData = symbols.reduce((acc, symbol) => {
           acc[symbol] = {
@@ -79,7 +100,7 @@ const AITradingCoach: React.FC<AITradingCoachProps> = ({ userWatchlist }) => {
             change: (Math.random() - 0.5) * 10,
             changePercent: (Math.random() - 0.5) * 10,
             volume: Math.floor(Math.random() * 1000000),
-            note: 'Simulated data - real market data unavailable'
+            note: 'Simulated data - market data service unavailable'
           }
           return acc
         }, {} as Record<string, any>)
@@ -104,12 +125,17 @@ const AITradingCoach: React.FC<AITradingCoachProps> = ({ userWatchlist }) => {
         }),
       })
       
+      if (!response.ok) {
+        // Check if it's a server error and provide fallback
+        if (response.status >= 500) {
+          throw new Error('AI service is temporarily unavailable. Please try again in a few minutes.')
+        }
+        const errorData = await response.json()
+        throw new Error(errorData.error || `Request failed with status ${response.status}`)
+      }
+      
       const result = await response.json()
       console.log('AI insights response:', result)
-      
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to generate insights')
-      }
       
       setInsights(result.data)
       console.log('✅ AI insights generated successfully!')
@@ -122,20 +148,30 @@ const AITradingCoach: React.FC<AITradingCoachProps> = ({ userWatchlist }) => {
           errorMessage = '🔧 AI service needs configuration. Contact support.'
         } else if (error.message.includes('rate limit')) {
           errorMessage = '⏱️ AI service is busy. Please try again in a moment.'
+        } else if (error.message.includes('fetch')) {
+          errorMessage = '🌐 Connection issue. Please check your internet and try again.'
         } else {
           errorMessage = `❌ ${error.message}`
         }
       }
       
       setInsights(errorMessage)
-      alert(`AI Analysis Failed: ${errorMessage}`)
     } finally {
+      clearTimeout(timeoutId)
       setLoading(false)
     }
   }
 
   const findSwingTradingOpportunities = async () => {
     setLoading(true)
+    setInsights('🔍 Searching for new opportunities...')
+    
+    // Add timeout protection
+    const timeoutId = setTimeout(() => {
+      setLoading(false)
+      setInsights('⏰ Search timed out. Please try again later.')
+    }, 30000) // 30 second timeout
+    
     try {
       console.log('Finding new swing trading opportunities...')
       
@@ -157,6 +193,14 @@ const AITradingCoach: React.FC<AITradingCoachProps> = ({ userWatchlist }) => {
         }),
       })
       
+      if (!response.ok) {
+        if (response.status >= 500) {
+          throw new Error('AI service is temporarily unavailable. Please try again in a few minutes.')
+        }
+        const errorData = await response.json()
+        throw new Error(errorData.error || `Request failed with status ${response.status}`)
+      }
+      
       const result = await response.json()
       console.log('Swing trading opportunities response:', result)
       
@@ -167,12 +211,17 @@ const AITradingCoach: React.FC<AITradingCoachProps> = ({ userWatchlist }) => {
       setInsights(result.data)
     } catch (error) {
       console.error('Error finding swing trading opportunities:', error)
+      let errorMessage = 'Unable to find swing trading opportunities at this time.'
       if (error instanceof Error) {
-        setInsights(`Unable to find swing trading opportunities: ${error.message}`)
-      } else {
-        setInsights('Unable to find opportunities at this time. Please try again later.')
+        if (error.message.includes('fetch')) {
+          errorMessage = '🌐 Connection issue. Please check your internet and try again.'
+        } else {
+          errorMessage = `❌ ${error.message}`
+        }
       }
+      setInsights(errorMessage)
     } finally {
+      clearTimeout(timeoutId)
       setLoading(false)
     }
   }
@@ -180,6 +229,15 @@ const AITradingCoach: React.FC<AITradingCoachProps> = ({ userWatchlist }) => {
   const analyzeSpecificStock = async (symbol: string) => {
     setAnalysisLoading(true)
     setSelectedStock(symbol)
+    setStockAnalysis(null) // Clear previous analysis
+    
+    // Add timeout protection
+    const timeoutId = setTimeout(() => {
+      setAnalysisLoading(false)
+      setStockAnalysis({
+        error: `⏰ Analysis of ${symbol} timed out. Please try again.`
+      })
+    }, 25000) // 25 second timeout
     
     try {
       // Get current market data
@@ -206,6 +264,14 @@ const AITradingCoach: React.FC<AITradingCoachProps> = ({ userWatchlist }) => {
         }),
       })
       
+      if (!response.ok) {
+        if (response.status >= 500) {
+          throw new Error('AI service is temporarily unavailable. Please try again in a few minutes.')
+        }
+        const errorData = await response.json()
+        throw new Error(errorData.error || `Request failed with status ${response.status}`)
+      }
+      
       const result = await response.json()
       
       if (!response.ok) {
@@ -215,10 +281,19 @@ const AITradingCoach: React.FC<AITradingCoachProps> = ({ userWatchlist }) => {
       setStockAnalysis(result.data)
     } catch (error) {
       console.error('Error analyzing stock:', error)
-      setStockAnalysis({
-        error: error instanceof Error ? error.message : 'Unable to analyze this stock at the moment. Please try again later.'
-      })
+      let errorMessage = `Unable to analyze ${symbol} at the moment.`
+      if (error instanceof Error) {
+        if (error.message.includes('fetch')) {
+          errorMessage = '🌐 Connection issue. Please check your internet and try again.'
+        } else if (error.message.includes('API key')) {
+          errorMessage = '🔧 AI service needs configuration. Contact support.'
+        } else {
+          errorMessage = error.message
+        }
+      }
+      setStockAnalysis({ error: errorMessage })
     } finally {
+      clearTimeout(timeoutId)
       setAnalysisLoading(false)
     }
   }

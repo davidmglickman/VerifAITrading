@@ -56,29 +56,27 @@ class MarketDataService {
 
   async getStockQuote(symbol: string): Promise<StockQuote> {
     try {
-      const response = await axios.get(`${FINNHUB_BASE_URL}/quote`, {
-        params: {
-          symbol: symbol.toUpperCase(),
-          token: this.apiKey,
+      console.log(`Fetching quote for ${symbol} via server API`)
+      
+      // Use our server-side API to avoid CORS issues
+      const response = await fetch(`/api/market/quote?symbol=${encodeURIComponent(symbol.toUpperCase())}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
         },
       })
 
-      const data = response.data
-      return {
-        symbol: symbol.toUpperCase(),
-        currentPrice: data.c,
-        change: data.d,
-        changePercent: data.dp,
-        high: data.h,
-        low: data.l,
-        open: data.o,
-        previousClose: data.pc,
-        volume: 0, // Finnhub doesn't provide volume in quote endpoint
-        timestamp: Date.now(),
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `API request failed with status ${response.status}`)
       }
+
+      const quote = await response.json()
+      console.log(`✅ Got quote for ${symbol}:`, quote)
+      return quote
     } catch (error) {
-      console.error(`Error fetching quote for ${symbol}:`, error)
-      throw new Error(`Failed to fetch quote for ${symbol}`)
+      console.error(`❌ Error fetching quote for ${symbol}:`, error)
+      throw new Error(`Failed to fetch quote for ${symbol}: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 

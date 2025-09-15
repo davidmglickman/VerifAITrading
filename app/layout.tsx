@@ -1,3 +1,4 @@
+import ChatBot from '../components/ChatBot'
 export const metadata = {
   title: 'VerifAI Trading - AI-Powered Stock Analysis',
   description: 'Advanced AI-powered stock swing trading platform with real-time analysis and smart alerts',
@@ -23,6 +24,8 @@ export default function RootLayout({
       </head>
       <body>
         {children}
+        {/* Global Chat Bot */}
+        <ChatBot />
       </body>
     </html>
   )

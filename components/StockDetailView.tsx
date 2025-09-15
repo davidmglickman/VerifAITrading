@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { marketDataService } from '../lib/market-data'
+import { getMarketTimeContext, type MarketTimeContext } from '../lib/market-hours'
 
 interface StockDetailViewProps {
   symbol: string
@@ -32,6 +33,7 @@ export default function StockDetailView({ symbol, onClose, onSetAlert }: StockDe
   const [technical, setTechnical] = useState<TechnicalAnalysis | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'overview' | 'news' | 'technical'>('overview')
+  const [marketCtx, setMarketCtx] = useState<MarketTimeContext | null>(null)
 
   useEffect(() => {
     loadStockDetail()
@@ -40,8 +42,11 @@ export default function StockDetailView({ symbol, onClose, onSetAlert }: StockDe
   const loadStockDetail = async () => {
     setLoading(true)
     try {
-      // Load stock quote
-      const quote = await marketDataService.getStockQuote(symbol)
+      // Refresh market session context
+      setMarketCtx(getMarketTimeContext())
+
+      // Load stock quote with fallback to Yahoo mock if Finnhub fails
+      const quote = await fetchQuoteWithFallback(symbol)
       setStockData(quote)
       
       // Load news
@@ -56,6 +61,18 @@ export default function StockDetailView({ symbol, onClose, onSetAlert }: StockDe
       console.error('Error loading stock detail:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchQuoteWithFallback = async (sym: string) => {
+    try {
+      return await marketDataService.getStockQuote(sym)
+    } catch (e) {
+      try {
+        return await marketDataService.getQuoteFromYahoo(sym)
+      } catch (e2) {
+        return null
+      }
     }
   }
 
@@ -201,7 +218,8 @@ export default function StockDetailView({ symbol, onClose, onSetAlert }: StockDe
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '1rem'
+              gap: '1rem',
+              flexWrap: 'wrap'
             }}>
               <span style={{
                 fontSize: '18px',
@@ -217,6 +235,25 @@ export default function StockDetailView({ symbol, onClose, onSetAlert }: StockDe
               }}>
                 {(stockData?.change || 0) >= 0 ? '+' : ''}{(stockData?.change || 0).toFixed(2)} ({(stockData?.changePercent || 0).toFixed(1)}%)
               </span>
+              {marketCtx && (
+                <span style={{
+                  fontSize: '11px',
+                  padding: '2px 8px',
+                  borderRadius: '999px',
+                  backgroundColor: marketCtx.session === 'OPEN' ? '#E6F7EE' : '#F2F2F7',
+                  color: marketCtx.session === 'OPEN' ? '#2F855A' : '#6E6E73',
+                  border: '1px solid #E5E5E7'
+                }}>
+                  {marketCtx.session.replace('_', ' ')}
+                </span>
+              )}
+              {marketCtx && (
+                <span style={{ fontSize: '12px', color: '#8E8E93' }}>
+                  {marketCtx.session === 'OPEN'
+                    ? `Closes ${new Date(marketCtx.nextClose).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ET`
+                    : `Opens ${new Date(marketCtx.nextOpen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ET`}
+                </span>
+              )}
             </div>
           </div>
           <button

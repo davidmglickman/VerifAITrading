@@ -211,13 +211,14 @@ export const generateEnhancedTradingInsight = async (
   companyProfiles: Record<string, any>
 ): Promise<string> => {
   try {
-    const hasRealData = Object.values(marketData).some(data => !data.note?.includes('Simulated'))
+    const hasRealData = Object.values(marketData).some(data => !data.note?.includes('Simulated') && !data.note?.includes('Fallback'))
+    const dataCount = Object.keys(marketData).length
     
     const prompt = `As a professional swing trading advisor, analyze my current watchlist and provide personalized insights.
 
 WATCHLIST: ${symbols.join(', ')}
 
-${hasRealData ? 'REAL-TIME MARKET DATA:' : 'MARKET DATA (Simulated):'}
+${hasRealData ? 'REAL-TIME MARKET DATA:' : 'MARKET DATA (Limited/Simulated):'}
 ${JSON.stringify(marketData, null, 2)}
 
 ${Object.keys(newsData).length > 0 ? `RECENT NEWS:
@@ -228,12 +229,18 @@ ${Object.entries(newsData).map(([symbol, news]) =>
 ${Object.keys(companyProfiles).length > 0 ? `COMPANY PROFILES:
 ${JSON.stringify(companyProfiles, null, 2)}` : ''}
 
+ANALYSIS REQUEST:
+${dataCount === 0 ? `I have ${symbols.length} stocks in my watchlist but market data is currently unavailable. Please provide general swing trading guidance for these symbols based on their typical market behavior and current market conditions.` : 
+  `I have market data for ${dataCount} of my ${symbols.length} watchlist stocks. Please provide actionable insights.`}
+
 Please provide:
-1. **Specific analysis for each stock** in my watchlist
-2. **Entry/exit opportunities** based on current price action
+1. **Specific analysis for each stock** in my watchlist (even with limited data)
+2. **Entry/exit opportunities** based on available information
 3. **Risk assessment** for each position
 4. **Portfolio correlation** insights
 5. **Actionable recommendations** for the next 1-2 weeks
+
+${!hasRealData ? 'Note: Since real-time data is limited, focus on general trading principles, sector trends, and risk management strategies for these symbols.' : ''}
 
 Format as clear, bullet-pointed insights that I can act on immediately.`
 
@@ -242,7 +249,7 @@ Format as clear, bullet-pointed insights that I can act on immediately.`
       messages: [
         {
           role: "system",
-          content: "You are a swing trading analyst. Provide CONCISE, bullet-pointed insights. Maximum 300 words total. Focus on immediate actionable opportunities with specific entry/exit points."
+          content: "You are a swing trading analyst. Provide CONCISE, bullet-pointed insights. Maximum 300 words total. If market data is limited, focus on general trading principles and risk management. Always provide actionable guidance even with incomplete data."
         },
         {
           role: "user",

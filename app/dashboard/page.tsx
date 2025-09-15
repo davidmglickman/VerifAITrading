@@ -12,6 +12,8 @@ import PositionSizingCalculator from '../../components/PositionSizingCalculator'
 import SwingPatternScanner from '../../components/SwingPatternScanner'
 import EnhancedWatchlistCards from '../../components/EnhancedWatchlistCards'
 import StockDetailView from '../../components/StockDetailView'
+import PortfolioHoldings from '../../components/PortfolioHoldings'
+import OCOSettings from '../../components/OCOSettings'
 
 // Modern Dashboard with Sidebar Navigation
 export default function DashboardPage() {
@@ -252,7 +254,7 @@ export default function DashboardPage() {
         />
       )}
 
-      {/* CSS for animations */}
+  {/* CSS for animations */}
       <style jsx global>{`
         @keyframes spin {
           0% { transform: rotate(0deg); }
@@ -447,6 +449,8 @@ function WatchlistContent({
   onStockClick: (symbol: string) => void
   onSetAlert: (symbol: string, price: number, type: 'above' | 'below') => void
 }) {
+  const [holdings, setHoldings] = useState<any[]>([])
+
   return (
     <div>
       {/* Enhanced Watchlist Cards */}
@@ -472,6 +476,67 @@ function WatchlistContent({
           onSetAlert={onSetAlert}
         />
       </div>
+
+      {/* Portfolio Holdings Section */}
+      <div style={{ marginBottom: '2rem' }}>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '16px',
+          padding: '2rem',
+          border: '1px solid #E5E5E7',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+        }}>
+          <h3 style={{
+            fontSize: '18px',
+            fontWeight: '600',
+            color: '#1D1D1F',
+            margin: '0 0 1rem 0'
+          }}>
+            💼 Portfolio Holdings
+          </h3>
+          <p style={{
+            fontSize: '14px',
+            color: '#86868B',
+            margin: '0 0 1.5rem 0'
+          }}>
+            Paste your current positions to get AI-powered sell recommendations and OCO order suggestions
+          </p>
+          <PortfolioHoldings onHoldingsUpdate={setHoldings} />
+        </div>
+      </div>
+
+      {/* OCO Settings Section */}
+      {(holdings.length > 0 || watchlist.length > 0) && (
+        <div style={{ marginBottom: '2rem' }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            padding: '2rem',
+            border: '1px solid #E5E5E7',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+          }}>
+            <h3 style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#1D1D1F',
+              margin: '0 0 1rem 0'
+            }}>
+              🎯 OCO Order Settings
+            </h3>
+            <p style={{
+              fontSize: '14px',
+              color: '#86868B',
+              margin: '0 0 1.5rem 0'
+            }}>
+              AI-generated bracket orders with profit targets and stop losses
+            </p>
+            <OCOSettings 
+              holdings={holdings}
+              watchlistSymbols={watchlist.map(item => item.symbol)}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Traditional Watchlist Manager */}
       <div style={{

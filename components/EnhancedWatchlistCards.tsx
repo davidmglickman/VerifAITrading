@@ -55,8 +55,8 @@ export default function EnhancedWatchlistCards({
     try {
       const enhancedData: StockCardData[] = await Promise.all(
         watchlist.map(async (stock) => {
-          // Get market data
-          const quote = await marketDataService.getStockQuote(stock.symbol).catch(() => null)
+          // Get market data with fallback
+          const quote = await fetchQuoteWithFallback(stock.symbol)
           
           // Get historical analysis - this is the key enhancement!
           const historicalAnalysis = await historicalAnalyzer.analyzeStock(stock.symbol)
@@ -71,9 +71,9 @@ export default function EnhancedWatchlistCards({
             symbol: stock.symbol,
             companyName: await getCompanyName(stock.symbol),
             currentPrice: quote?.currentPrice || historicalAnalysis.technicalIndicators.movingAverages.sma20 || 50,
-            change: quote?.change || 0,
-            changePercent: quote?.changePercent || 0,
-            volume: quote?.volume || historicalAnalysis.volumeProfile.averageVolume,
+            change: quote?.change ?? 0,
+            changePercent: quote?.changePercent ?? 0,
+            volume: quote?.volume ?? historicalAnalysis.volumeProfile.averageVolume,
             historicalAnalysis,
             ocoRecommendation: ocoRec,
             profitPotential,
@@ -97,6 +97,20 @@ export default function EnhancedWatchlistCards({
       console.error('Error loading stock data:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchQuoteWithFallback = async (symbol: string) => {
+    try {
+      const q = await marketDataService.getStockQuote(symbol)
+      return q
+    } catch (e) {
+      try {
+        const y = await marketDataService.getQuoteFromYahoo(symbol)
+        return y
+      } catch (e2) {
+        return null
+      }
     }
   }
 
