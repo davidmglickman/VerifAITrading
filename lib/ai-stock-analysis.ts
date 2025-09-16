@@ -35,6 +35,9 @@ export interface AIStockAnalysis {
     score: number // -1 to 1
     newsCount: number
     keyPoints: string[]
+    topCatalyst?: string // Most impactful recent headline
+    summary?: string // Condensed AI summary of recent news impact
+    sentimentLabel?: 'BULLISH' | 'BEARISH' | 'NEUTRAL'
   }
   
   // Risk Assessment
@@ -50,6 +53,17 @@ export interface AIStockAnalysis {
 }
 
 class AIStockAnalysisService {
+  /**
+   * analyzeStock orchestrates data gathering (quote, news, historical) then produces
+   * an actionable AIStockAnalysis structure. News impact is incorporated via:
+   *  - Keyword heuristic sentiment scoring (lightweight, offline)
+   *  - Catalyst extraction: strongest headline by sentiment keyword magnitude
+   *  - Concise summary: concatenated top headlines + overall tone label
+   * Future enhancements:
+   *  - Use OpenAI function calling for structured event classification (earnings, M&A, macro)
+   *  - Weight technical signals by news-driven volatility spikes
+   *  - Persist cached analysis in Supabase with freshness timestamps
+   */
   async analyzeStock(symbol: string): Promise<AIStockAnalysis> {
     try {
       console.log(`🤖 Starting AI analysis for ${symbol}...`)
@@ -114,6 +128,17 @@ class AIStockAnalysisService {
     
     // Analyze sentiment from news
     const sentiment = this.analyzeSentiment(news)
+
+    // If we have enough news items, attempt AI summarization (placeholder lightweight heuristic for now)
+    if (news.length > 0) {
+      const catalyst = this.extractTopCatalyst(news)
+      const summary = this.generateNewsSummaryHeuristic(news, sentiment.score)
+      sentiment.topCatalyst = catalyst
+      sentiment.summary = summary
+      sentiment.sentimentLabel = sentiment.score > 0.25 ? 'BULLISH' : sentiment.score < -0.25 ? 'BEARISH' : 'NEUTRAL'
+    } else {
+      sentiment.sentimentLabel = 'NEUTRAL'
+    }
     
     // Generate AI recommendation
     const recommendation = this.generateRecommendation(quote, technicalSignals, sentiment)
@@ -206,12 +231,21 @@ class AIStockAnalysisService {
     }
   }
   
-  private analyzeSentiment(news: StockNews[]) {
+  private analyzeSentiment(news: StockNews[]): {
+    score: number
+    newsCount: number
+    keyPoints: string[]
+    topCatalyst?: string
+    summary?: string
+    sentimentLabel?: 'BULLISH' | 'BEARISH' | 'NEUTRAL'
+  } {
     if (news.length === 0) {
       return {
         score: 0,
         newsCount: 0,
-        keyPoints: ['No recent news available']
+        keyPoints: ['No recent news available'],
+        sentimentLabel: 'NEUTRAL',
+        summary: 'No recent news available to analyze.'
       }
     }
     
@@ -219,7 +253,7 @@ class AIStockAnalysisService {
     let totalSentiment = 0
     const keyPoints: string[] = []
     
-    news.forEach(article => {
+  news.forEach((article: StockNews) => {
       const headline = article.headline.toLowerCase()
       let sentiment = 0
       
@@ -246,6 +280,34 @@ class AIStockAnalysisService {
       newsCount: news.length,
       keyPoints: keyPoints.slice(0, 3)
     }
+  }
+
+  private extractTopCatalyst(news: StockNews[]): string | undefined {
+    // Choose the headline with strongest keyword sentiment delta
+    let bestHeadline: string | undefined = undefined
+    let bestScore = -1
+    const positive = ['beat', 'surge', 'upgrade', 'record', 'growth', 'strong', 'accelerat']
+    const negative = ['cut', 'downgrade', 'miss', 'delay', 'halt', 'probe', 'concern', 'recall']
+    for (const article of news.slice(0, 8)) {
+      const h = article.headline.toLowerCase()
+      let s = 0
+      for (const k of positive) if (h.includes(k)) s += 1
+      for (const k of negative) if (h.includes(k)) s += 1 // negative counts also raise magnitude
+      const magnitude = Math.abs(s)
+      if (magnitude > bestScore) {
+        bestScore = magnitude
+        bestHeadline = article.headline
+      }
+    }
+    return bestHeadline
+  }
+
+  private generateNewsSummaryHeuristic(news: StockNews[], sentimentScore: number): string {
+    const recent = news.slice(0, 5).map(n => n.headline.replace(/\.$/, ''))
+    let sentimentDescriptor = 'mixed'
+    if (sentimentScore > 0.25) sentimentDescriptor = 'positive'
+    else if (sentimentScore < -0.25) sentimentDescriptor = 'negative'
+    return `${recent.length ? recent.join('; ') + '. ' : ''}Overall short-term news tone: ${sentimentDescriptor}.`
   }
   
   private generateRecommendation(quote: StockQuote, technical: any, sentiment: any) {
@@ -433,7 +495,10 @@ class AIStockAnalysisService {
       sentiment: {
         score: 0,
         newsCount: 0,
-        keyPoints: ['No sentiment data available']
+        keyPoints: ['No sentiment data available'],
+        topCatalyst: undefined,
+        summary: 'No recent news catalysts detected.',
+        sentimentLabel: 'NEUTRAL'
       },
       
       riskLevel: 'MEDIUM',

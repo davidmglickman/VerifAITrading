@@ -46,6 +46,7 @@ export interface CompanyProfile {
 
 class MarketDataService {
   private apiKey: string
+  private newsCache: Map<string, { timestamp: number; data: StockNews[] }> = new Map()
 
   constructor() {
     this.apiKey = FINNHUB_API_KEY || ''
@@ -108,6 +109,13 @@ class MarketDataService {
 
   async getStockNews(symbol: string, fromDate?: string, toDate?: string): Promise<StockNews[]> {
     try {
+      // Cache key by symbol + date range (if provided)
+      const cacheKey = `${symbol.toUpperCase()}::${fromDate || 'auto'}::${toDate || 'auto'}`
+      const cached = this.newsCache.get(cacheKey)
+      const now = Date.now()
+      if (cached && (now - cached.timestamp) < 10 * 60 * 1000) { // 10 min TTL
+        return cached.data
+      }
       const today = new Date()
       const oneWeekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
       
@@ -123,11 +131,19 @@ class MarketDataService {
         },
       })
 
-      return response.data.slice(0, 10) // Limit to 10 most recent articles
+      const result = response.data.slice(0, 10)
+      this.newsCache.set(cacheKey, { timestamp: now, data: result })
+      return result // Limit to 10 most recent articles
     } catch (error) {
       console.error(`Error fetching news for ${symbol}:`, error)
       throw new Error(`Failed to fetch news for ${symbol}`)
     }
+  }
+
+  async getCompanyNews(symbol: string, lookbackDays: number = 5): Promise<StockNews[]> {
+    const to = new Date()
+    const from = new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000)
+    return this.getStockNews(symbol, from.toISOString().split('T')[0], to.toISOString().split('T')[0])
   }
 
   async getGeneralNews(category: string = 'general'): Promise<StockNews[]> {

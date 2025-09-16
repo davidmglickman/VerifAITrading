@@ -11,16 +11,18 @@ import PortfolioRiskAI from '../../components/PortfolioRiskAI'
 import PositionSizingCalculator from '../../components/PositionSizingCalculator'
 import SwingPatternScanner from '../../components/SwingPatternScanner'
 import EnhancedWatchlistCards from '../../components/EnhancedWatchlistCards'
+import WatchlistListView from '../../components/WatchlistListView'
 import StockDetailView from '../../components/StockDetailView'
 import PortfolioHoldings from '../../components/PortfolioHoldings'
 import OCOSettings from '../../components/OCOSettings'
+import OCONotificationDashboard from '../../components/OCONotificationDashboard'
 
 // Modern Dashboard with Sidebar Navigation
 export default function DashboardPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [activeView, setActiveView] = useState('overview')
+  const [activeView, setActiveView] = useState('watchlist')
   const [selectedStock, setSelectedStock] = useState<string | null>(null)
   const aiCoachRef = useRef<any>(null)
   const watchlistRef = useRef<any>(null)
@@ -144,7 +146,6 @@ export default function DashboardPage() {
 
   // Navigation items
   const navItems = [
-    { id: 'overview', label: 'Overview', icon: '📊' },
     { id: 'watchlist', label: 'Watchlist', icon: '⭐' },
     { id: 'ai-coach', label: 'AI Coach', icon: '🤖' },
     { id: 'analysis', label: 'Analysis', icon: '📈' },
@@ -270,7 +271,6 @@ export default function DashboardPage() {
             color: '#86868B',
             margin: 0
           }}>
-            {activeView === 'overview' && 'Your trading dashboard overview'}
             {activeView === 'watchlist' && 'Manage your stock watchlist'}
             {activeView === 'ai-coach' && 'AI-powered trading insights and recommendations'}
             {activeView === 'analysis' && 'Technical and fundamental analysis tools'}
@@ -281,8 +281,7 @@ export default function DashboardPage() {
 
         {/* Content Area */}
         <div style={{ minHeight: '500px' }}>
-          {activeView === 'overview' && <OverviewContent watchlist={watchlist} />}
-          {activeView === 'watchlist' && <WatchlistContent watchlist={watchlist} setWatchlist={setWatchlist} onStockClick={handleStockClick} onSetAlert={handleSetAlert} updateWatchlist={updateWatchlist} removeFromWatchlistLocal={removeFromWatchlistLocal} user={user} />}
+          {activeView === 'watchlist' && <WatchlistContent watchlist={watchlist} setWatchlist={setWatchlist} onStockClick={handleStockClick} onSetAlert={handleSetAlert} updateWatchlist={updateWatchlist} removeFromWatchlistLocal={removeFromWatchlistLocal} addToWatchlistLocal={addToWatchlistLocal} user={user} />}
           {activeView === 'ai-coach' && <AICoachContent watchlist={watchlist} />}
           {activeView === 'analysis' && <AnalysisContent watchlist={watchlist} />}
           {activeView === 'alerts' && <AlertsContent user={user} />}
@@ -310,178 +309,6 @@ export default function DashboardPage() {
   )
 }
 
-// Overview Content Component
-function OverviewContent({ watchlist }: { watchlist: any[] }) {
-  return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-      gap: '1.5rem'
-    }}>
-      {/* Market Summary Card */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '16px',
-        padding: '1.5rem',
-        border: '1px solid #E5E5E7',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-      }}>
-        <h3 style={{
-          fontSize: '18px',
-          fontWeight: '600',
-          color: '#1D1D1F',
-          margin: '0 0 1rem 0'
-        }}>
-          📈 Market Summary
-        </h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ color: '#86868B' }}>S&P 500</span>
-            <span style={{ color: '#34C759', fontWeight: '500' }}>+0.85%</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ color: '#86868B' }}>NASDAQ</span>
-            <span style={{ color: '#34C759', fontWeight: '500' }}>+1.23%</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ color: '#86868B' }}>VIX</span>
-            <span style={{ color: '#FF3B30', fontWeight: '500' }}>18.4</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Watchlist Preview */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '16px',
-        padding: '1.5rem',
-        border: '1px solid #E5E5E7',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-      }}>
-        <h3 style={{
-          fontSize: '18px',
-          fontWeight: '600',
-          color: '#1D1D1F',
-          margin: '0 0 1rem 0'
-        }}>
-          ⭐ Your Watchlist
-        </h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {watchlist.slice(0, 3).map((stock) => (
-            <div key={stock.id} style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontWeight: '500' }}>{stock.symbol}</span>
-              <span style={{ color: '#86868B' }}>--</span>
-            </div>
-          ))}
-          {watchlist.length > 3 && (
-            <p style={{ color: '#86868B', fontSize: '14px', margin: 0 }}>
-              +{watchlist.length - 3} more stocks
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '16px',
-        padding: '1.5rem',
-        border: '1px solid #E5E5E7',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-      }}>
-        <h3 style={{
-          fontSize: '18px',
-          fontWeight: '600',
-          color: '#1D1D1F',
-          margin: '0 0 1rem 0'
-        }}>
-          🚀 Quick Actions
-        </h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <button 
-            onClick={async () => {
-              try {
-                // Trigger AI insights generation directly
-                if (watchlist.length === 0) {
-                  alert('Add some stocks to your watchlist first!')
-                  return
-                }
-                
-                // Trigger the actual AI insights API call
-                const symbols = watchlist.map(item => item.symbol)
-                const response = await fetch('/api/ai/insights', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    symbols,
-                    marketData: {},
-                    newsData: {},
-                    companyProfiles: {}
-                  })
-                })
-                
-                if (response.ok) {
-                  const result = await response.json()
-                  alert('✅ AI Insights generated! Check the AI Trading Coach section below.')
-                  // Scroll to AI coach section
-                  document.querySelector('[data-section="ai-coach"]')?.scrollIntoView({ behavior: 'smooth' })
-                } else {
-                  alert('❌ Failed to generate AI insights. Please try again.')
-                }
-              } catch (error) {
-                console.error('Error generating insights:', error)
-                alert('❌ Error generating insights. Please check your connection.')
-              }
-            }}
-            style={{
-              padding: '0.75rem',
-              border: '1px solid #007AFF',
-              borderRadius: '8px',
-              background: '#007AFF',
-              color: 'white',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: 'pointer'
-            }}
-          >
-            Get AI Insights
-          </button>
-          <button 
-            onClick={() => {
-              // Scroll to watchlist section and focus add input
-              const watchlistSection = document.querySelector('[data-section="watchlist"]')
-              const addInput = document.querySelector('[data-action="add-stock-input"]') as HTMLInputElement
-              
-              if (watchlistSection) {
-                watchlistSection.scrollIntoView({ behavior: 'smooth' })
-                setTimeout(() => {
-                  if (addInput) {
-                    addInput.focus()
-                  }
-                }, 500)
-              } else {
-                alert('Scroll down to find the watchlist section')
-              }
-            }}
-            style={{
-              padding: '0.75rem',
-              border: '1px solid #E5E5E7',
-              borderRadius: '8px',
-              background: 'white',
-              color: '#1D1D1F',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: 'pointer'
-            }}
-          >
-            Add Stock to Watchlist
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // Watchlist Content Component
 function WatchlistContent({ 
   watchlist, 
@@ -490,6 +317,7 @@ function WatchlistContent({
   onSetAlert,
   updateWatchlist,
   removeFromWatchlistLocal,
+  addToWatchlistLocal,
   user
 }: { 
   watchlist: any[]
@@ -498,34 +326,128 @@ function WatchlistContent({
   onSetAlert: (symbol: string, price: number, type: 'above' | 'below') => void
   updateWatchlist: () => Promise<void>
   removeFromWatchlistLocal: (id: string) => Promise<{error: any}>
+  addToWatchlistLocal: (symbol: string) => Promise<{data: any, error: any}>
   user: any
 }) {
   const [holdings, setHoldings] = useState<any[]>([])
+  const [viewMode, setViewMode] = useState<'cards' | 'list'>('list')
 
   return (
     <div>
+      {/* AI Trading Coach */}
+      <div style={{ marginBottom: '2rem' }}>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '16px',
+          padding: '1.5rem',
+          border: '1px solid #E5E5E7',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+        }}>
+          <h3 style={{
+            fontSize: '20px',
+            fontWeight: '600',
+            color: '#1D1D1F',
+            margin: '0 0 1rem 0',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}>
+            🤖 AI Trading Coach
+          </h3>
+          <AITradingCoach userWatchlist={watchlist} />
+        </div>
+      </div>
+
       {/* Enhanced Watchlist Cards */}
       <div style={{ marginBottom: '2rem' }}>
-        <h3 style={{
-          fontSize: '20px',
-          fontWeight: '600',
-          color: '#1D1D1F',
-          margin: '0 0 1rem 0'
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '1rem'
         }}>
-          📊 Smart Watchlist Cards
-        </h3>
+          <h3 style={{
+            fontSize: '20px',
+            fontWeight: '600',
+            color: '#1D1D1F',
+            margin: 0
+          }}>
+            📊 Smart Watchlist {viewMode === 'cards' ? 'Cards' : 'List'}
+          </h3>
+          
+          {/* View Toggle */}
+          <div style={{
+            display: 'flex',
+            backgroundColor: '#F2F2F7',
+            borderRadius: '8px',
+            padding: '2px'
+          }}>
+            <button
+              onClick={() => setViewMode('cards')}
+              style={{
+                padding: '6px 12px',
+                backgroundColor: viewMode === 'cards' ? '#007AFF' : 'transparent',
+                color: viewMode === 'cards' ? 'white' : '#007AFF',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              🎴 Cards
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              style={{
+                padding: '6px 12px',
+                backgroundColor: viewMode === 'list' ? '#007AFF' : 'transparent',
+                color: viewMode === 'list' ? 'white' : '#007AFF',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              📋 List
+            </button>
+          </div>
+        </div>
+        
         <p style={{
           fontSize: '14px',
           color: '#86868B',
           margin: '0 0 1.5rem 0'
         }}>
-          Click any card to see detailed analysis, news, and technical indicators
+          {viewMode === 'cards' 
+            ? 'Click any card to see detailed analysis, news, and technical indicators'
+            : 'Compact list view with expandable OCO strategies. Click ▶ to expand details.'
+          }
         </p>
-        <EnhancedWatchlistCards 
-          watchlist={watchlist}
-          onStockClick={onStockClick}
-          onSetAlert={onSetAlert}
-        />
+        
+        {viewMode === 'cards' ? (
+          <EnhancedWatchlistCards 
+            watchlist={watchlist}
+            onStockClick={onStockClick}
+            onSetAlert={onSetAlert}
+            userId={user?.id || "550e8400-e29b-41d4-a716-446655440000"}
+          />
+        ) : (
+          <WatchlistListView 
+            watchlist={watchlist}
+            onStockClick={onStockClick}
+            onSetAlert={onSetAlert}
+            userId={user?.id || "550e8400-e29b-41d4-a716-446655440000"}
+          />
+        )}
+      </div>
+
+      {/* OCO Notifications Dashboard */}
+      <div style={{ marginBottom: '2rem' }}>
+        <OCONotificationDashboard userId={user?.id || "550e8400-e29b-41d4-a716-446655440000"} />
       </div>
 
       {/* Portfolio Holdings Section */}

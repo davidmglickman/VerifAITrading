@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { aiStockAnalysisService, AIStockAnalysis } from '../lib/ai-stock-analysis'
+import { ocoNotificationService } from '../lib/oco-notifications'
 
 interface StockCardData {
   symbol: string
@@ -15,15 +16,99 @@ interface EnhancedWatchlistCardsProps {
   watchlist: Array<{ symbol: string; id: string }>
   onStockClick: (symbol: string) => void
   onSetAlert: (symbol: string, price: number, type: 'above' | 'below') => void
+  userId?: string
 }
 
 export default function EnhancedWatchlistCards({ 
   watchlist, 
   onStockClick, 
-  onSetAlert 
+  onSetAlert,
+  userId = "550e8400-e29b-41d4-a716-446655440000"
 }: EnhancedWatchlistCardsProps) {
   const [stocksData, setStocksData] = useState<StockCardData[]>([])
   const [loading, setLoading] = useState(true)
+
+  const setupOCONotifications = async (
+    stock: StockCardData, 
+    profile: 'conservative' | 'moderate' | 'aggressive'
+  ) => {
+    try {
+      const ocoData = generateOCOByRiskProfile(stock, profile)
+      
+      // Show notification preferences modal (simplified for now)
+      const userWantsNotifications = confirm(
+        `Set up smart notifications for ${stock.symbol} ${profile.toUpperCase()} OCO?\n\n` +
+        `This will monitor:\n` +
+        `✅ Price targets (Entry: $${ocoData.entry.toFixed(2)}, Stop: $${ocoData.stop.toFixed(2)}, Target: $${ocoData.target.toFixed(2)})\n` +
+        `✅ News catalysts related to ${stock.symbol}\n` +
+        `✅ Related stock movements (sector correlation)\n` +
+        `✅ Volume spikes indicating momentum\n\n` +
+        `Click OK to enable all notifications, Cancel to copy OCO only.`
+      )
+      
+      if (userWantsNotifications) {
+        const { notification, triggers } = await ocoNotificationService.createOCONotification(
+          userId,
+          stock.symbol,
+          profile,
+          {
+            entry: ocoData.entry,
+            stop: ocoData.stop,
+            target: ocoData.target,
+            confidence: ocoData.confidence,
+            reasoning: ocoData.reasoning
+          },
+          {
+            priceTargets: true,
+            newsCatalysts: true,
+            relatedStocks: true,
+            volumeSpikes: true
+          }
+        )
+        
+        // Copy OCO to clipboard with notification info
+        const ocoText = `${stock.symbol} ${profile.toUpperCase()} OCO (AI-Generated + Smart Notifications):
+
+📊 TRADING SETUP:
+Entry: $${ocoData.entry.toFixed(2)}
+Stop: $${ocoData.stop.toFixed(2)}
+Target: $${ocoData.target.toFixed(2)}
+Risk/Reward: ${ocoData.riskReward.toFixed(2)}:1
+Position: ${ocoData.positionSize}
+Confidence: ${ocoData.confidence}%
+
+🔔 SMART NOTIFICATIONS ACTIVE:
+✅ Price target alerts (${triggers.filter(t => t.type.startsWith('price_')).length} triggers)
+✅ News catalyst monitoring
+✅ Related stocks: ${notification.relatedSymbols.join(', ')}
+✅ Volume spike detection
+📈 Sector trend: ${notification.sectorTrend.toUpperCase()}
+
+🤖 AI Analysis: ${ocoData.reasoning}
+
+Notification ID: ${notification.id.slice(-8)}`
+        
+        navigator.clipboard.writeText(ocoText)
+        alert(`🎯 ${profile.toUpperCase()} OCO + Smart Notifications activated!\n\nYou'll be notified when:\n• Price targets are reached\n• Relevant news breaks\n• Related stocks move significantly\n• Volume spikes occur\n\nOCO details copied to clipboard!`)
+      } else {
+        // Just copy regular OCO
+        const ocoText = `${stock.symbol} ${profile.toUpperCase()} OCO (AI-Generated):
+Entry: $${ocoData.entry.toFixed(2)}
+Stop: $${ocoData.stop.toFixed(2)}
+Target: $${ocoData.target.toFixed(2)}
+Risk/Reward: ${ocoData.riskReward.toFixed(2)}:1
+Position: ${ocoData.positionSize}
+Confidence: ${ocoData.confidence}%
+
+AI Analysis: ${ocoData.reasoning}`
+        navigator.clipboard.writeText(ocoText)
+        alert('📋 OCO strategy copied to clipboard!')
+      }
+    } catch (error) {
+      console.error('Error setting up OCO notifications:', error)
+      alert('Error setting up notifications. OCO strategy copied to clipboard.')
+    }
+  }
 
   useEffect(() => {
     loadStockData()
@@ -332,6 +417,33 @@ export default function EnhancedWatchlistCards({
             }}>
               💡 AI Analysis: {stock.aiAnalysis.reasoning}
             </div>
+            {stock.aiAnalysis.sentiment.topCatalyst && (
+              <div style={{
+                fontSize: '12px',
+                color: '#007AFF',
+                backgroundColor: 'rgba(0,122,255,0.08)',
+                padding: '6px 8px',
+                borderRadius: '6px',
+                marginBottom: '0.5rem'
+              }}>
+                📰 Catalyst: {stock.aiAnalysis.sentiment.topCatalyst.length > 90 
+                  ? stock.aiAnalysis.sentiment.topCatalyst.slice(0,90) + '…' 
+                  : stock.aiAnalysis.sentiment.topCatalyst}
+              </div>
+            )}
+            {stock.aiAnalysis.sentiment.summary && (
+              <div style={{
+                fontSize: '11px',
+                color: '#6E6E73',
+                lineHeight: 1.4,
+                borderLeft: '3px solid #E5E5EA',
+                padding: '4px 8px',
+                background: '#F8F9FA',
+                borderRadius: '4px'
+              }}>
+                {stock.aiAnalysis.sentiment.summary}
+              </div>
+            )}
           </div>
 
           {/* Price Targets */}
@@ -457,18 +569,7 @@ AI Analysis: ${stock.aiAnalysis.reasoning}`
               <button
                 onClick={(e) => {
                   e.stopPropagation()
-                  const conservativeOCO = generateOCOByRiskProfile(stock, 'conservative')
-                  const ocoText = `${stock.symbol} CONSERVATIVE OCO (AI-Generated):
-Entry: $${conservativeOCO.entry.toFixed(2)}
-Stop: $${conservativeOCO.stop.toFixed(2)}
-Target: $${conservativeOCO.target.toFixed(2)}
-Risk/Reward: ${conservativeOCO.riskReward.toFixed(2)}:1
-Position: ${conservativeOCO.positionSize}
-Confidence: ${conservativeOCO.confidence}%
-
-AI Analysis: ${conservativeOCO.reasoning}`
-                  navigator.clipboard.writeText(ocoText)
-                  alert('📋 AI Conservative OCO copied to clipboard!')
+                  setupOCONotifications(stock, 'conservative')
                 }}
                 style={{
                   padding: '12px 8px',
@@ -500,18 +601,7 @@ AI Analysis: ${conservativeOCO.reasoning}`
               <button
                 onClick={(e) => {
                   e.stopPropagation()
-                  const moderateOCO = generateOCOByRiskProfile(stock, 'moderate')
-                  const ocoText = `${stock.symbol} MODERATE OCO (AI-Generated):
-Entry: $${moderateOCO.entry.toFixed(2)}
-Stop: $${moderateOCO.stop.toFixed(2)}
-Target: $${moderateOCO.target.toFixed(2)}
-Risk/Reward: ${moderateOCO.riskReward.toFixed(2)}:1
-Position: ${moderateOCO.positionSize}
-Confidence: ${moderateOCO.confidence}%
-
-AI Analysis: ${moderateOCO.reasoning}`
-                  navigator.clipboard.writeText(ocoText)
-                  alert('📋 AI Moderate OCO copied to clipboard!')
+                  setupOCONotifications(stock, 'moderate')
                 }}
                 style={{
                   padding: '12px 8px',
@@ -543,18 +633,7 @@ AI Analysis: ${moderateOCO.reasoning}`
               <button
                 onClick={(e) => {
                   e.stopPropagation()
-                  const aggressiveOCO = generateOCOByRiskProfile(stock, 'aggressive')
-                  const ocoText = `${stock.symbol} AGGRESSIVE OCO (AI-Generated):
-Entry: $${aggressiveOCO.entry.toFixed(2)}
-Stop: $${aggressiveOCO.stop.toFixed(2)}
-Target: $${aggressiveOCO.target.toFixed(2)}
-Risk/Reward: ${aggressiveOCO.riskReward.toFixed(2)}:1
-Position: ${aggressiveOCO.positionSize}
-Confidence: ${aggressiveOCO.confidence}%
-
-AI Analysis: ${aggressiveOCO.reasoning}`
-                  navigator.clipboard.writeText(ocoText)
-                  alert('📋 AI Aggressive OCO copied to clipboard!')
+                  setupOCONotifications(stock, 'aggressive')
                 }}
                 style={{
                   padding: '12px 8px',
